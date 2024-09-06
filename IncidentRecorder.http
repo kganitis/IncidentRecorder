@@ -1,6 +1,6 @@
 @IncidentRecorder_HostAddress = http://localhost:5168
 
-GET {{IncidentRecorder_HostAddress}}/weatherforecast/
+GET {{IncidentRecorder_HostAddress}}/incidentrecorder/
 Accept: application/json
 
 ###

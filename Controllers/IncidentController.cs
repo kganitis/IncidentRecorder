@@ -1,7 +1,8 @@
-﻿using IncidentRecorder.Data;
-using IncidentRecorder.Models;
+﻿using IncidentRecorder.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using IncidentRecorder.Data;
+using IncidentRecorder.DTOs.Incident;
 
 namespace IncidentRecorder.Controllers
 {
@@ -16,44 +17,122 @@ namespace IncidentRecorder.Controllers
             _context = context;
         }
 
-        // GET: api/incident
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Incident>>> GetIncidents()
+        // Get all incidents with DTOs
+        [HttpGet("all")]
+        public async Task<ActionResult<IEnumerable<IncidentReadDTO>>> GetIncidents()
         {
-            return await _context.Incidents.ToListAsync();
+            var incidents = await _context.Incidents
+                .Include(i => i.Disease)
+                .Include(i => i.Patient)
+                .Include(i => i.Location)
+                .Include(i => i.Symptoms)
+                .ToListAsync();
+
+            var incidentDtos = incidents.Select(incident => new IncidentReadDTO
+            {
+                Id = incident.Id,
+                DiseaseName = incident.Disease.Name,
+                PatientName = $"{incident.Patient.FirstName} {incident.Patient.LastName}",
+                Location = $"{incident.Location.City}, {incident.Location.Country}",
+                DateReported = incident.DateReported,
+                Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
+            }).ToList();
+
+            return Ok(incidentDtos);
         }
 
-        // GET: api/incident/5
+        // Get a specific incident by id with DTO
         [HttpGet("{id}")]
-        public async Task<ActionResult<Incident>> GetIncident(int id)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<IncidentReadDTO>> GetIncident(int id)
         {
-            var incident = await _context.Incidents.FindAsync(id);
+            var incident = await _context.Incidents
+                .Include(i => i.Disease)
+                .Include(i => i.Patient)
+                .Include(i => i.Location)
+                .Include(i => i.Symptoms)
+                .FirstOrDefaultAsync(i => i.Id == id);
 
             if (incident == null)
             {
                 return NotFound();
             }
 
-            return incident;
+            var incidentDto = new IncidentReadDTO
+            {
+                Id = incident.Id,
+                DiseaseName = incident.Disease.Name,
+                PatientName = $"{incident.Patient.FirstName} {incident.Patient.LastName}",
+                Location = $"{incident.Location.City}, {incident.Location.Country}",
+                DateReported = incident.DateReported,
+                Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
+            };
+
+            return Ok(incidentDto);
         }
 
-        // POST: api/incident
-        [HttpPost]
-        public async Task<ActionResult<Incident>> PostIncident(Incident incident)
+        // Create a new incident
+        [HttpPost("create")]
+        public async Task<ActionResult<Incident>> PostIncident([FromBody] IncidentCreateDTO incidentDto)
         {
+            var incident = new Incident
+            {
+                DiseaseId = incidentDto.DiseaseId,
+                PatientId = incidentDto.PatientId,
+                LocationId = incidentDto.LocationId,
+                DateReported = incidentDto.DateReported,
+                Symptoms = incidentDto.SymptomIds != null
+                    ? await _context.Symptoms.Where(s => incidentDto.SymptomIds.Contains(s.Id)).ToListAsync()
+                    : new List<Symptom>()
+            };
+
             _context.Incidents.Add(incident);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetIncident), new { id = incident.Id }, incident);
         }
 
-        // PUT: api/incident/5
+        // Update an incident
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutIncident(int id, Incident incident)
+        public async Task<IActionResult> PutIncident(int id, [FromBody] IncidentUpdateDTO incidentDto)
         {
-            if (id != incident.Id)
+            var incident = await _context.Incidents
+                .Include(i => i.Symptoms) // Ensure symptoms are loaded to modify them
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (incident == null)
             {
-                return BadRequest();
+                return NotFound();
+            }
+
+            // Update fields only if they are present in the DTO
+            if (incidentDto.DiseaseId.HasValue)
+            {
+                incident.DiseaseId = incidentDto.DiseaseId.Value;
+            }
+
+            if (incidentDto.PatientId.HasValue)
+            {
+                incident.PatientId = incidentDto.PatientId.Value;
+            }
+
+            if (incidentDto.LocationId.HasValue)
+            {
+                incident.LocationId = incidentDto.LocationId.Value;
+            }
+
+            if (incidentDto.DateReported.HasValue)
+            {
+                incident.DateReported = incidentDto.DateReported.Value;
+            }
+
+            // Update symptoms if provided
+            if (incidentDto.SymptomIds != null)
+            {
+                incident.Symptoms = await _context.Symptoms
+                    .Where(s => incidentDto.SymptomIds.Contains(s.Id))
+                    .ToListAsync();
             }
 
             _context.Entry(incident).State = EntityState.Modified;
@@ -77,7 +156,8 @@ namespace IncidentRecorder.Controllers
             return NoContent();
         }
 
-        // DELETE: api/incident/5
+
+        // Delete an incident
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteIncident(int id)
         {
@@ -97,5 +177,61 @@ namespace IncidentRecorder.Controllers
         {
             return _context.Incidents.Any(e => e.Id == id);
         }
+
+        // Get all incidents (lightweight version for listing)
+        [HttpGet("list")]
+        public async Task<ActionResult<IEnumerable<IncidentListDTO>>> GetIncidentsList()
+        {
+            var incidents = await _context.Incidents
+                .Include(i => i.Disease)
+                .Include(i => i.Patient)
+                .Include(i => i.Location)
+                .ToListAsync();
+
+            var incidentDtos = incidents.Select(incident => new IncidentListDTO
+            {
+                Id = incident.Id,
+                DiseaseName = incident.Disease.Name,
+                PatientName = $"{incident.Patient.FirstName} {incident.Patient.LastName}",
+                Location = $"{incident.Location.City}, {incident.Location.Country}",
+                DateReported = incident.DateReported
+            }).ToList();
+
+            return Ok(incidentDtos);
+        }
+
+        // Get incident details (full version)
+        [HttpGet("details/{id}")]
+        public async Task<ActionResult<IncidentDetailsDTO>> GetIncidentDetails(int id)
+        {
+            var incident = await _context.Incidents
+                .Include(i => i.Disease)
+                .Include(i => i.Patient)
+                .Include(i => i.Location)
+                .Include(i => i.Symptoms)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (incident == null)
+            {
+                return NotFound();
+            }
+
+            var incidentDto = new IncidentDetailsDTO
+            {
+                Id = incident.Id,
+                DiseaseName = incident.Disease.Name,
+                DiseaseDescription = incident.Disease.Description,
+                PatientName = $"{incident.Patient.FirstName} {incident.Patient.LastName}",
+                PatientDateOfBirth = incident.Patient.DateOfBirth,
+                PatientContactInfo = incident.Patient.ContactInfo,
+                Location = $"{incident.Location.City}, {incident.Location.Country}",
+                DateReported = incident.DateReported,
+                Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
+            };
+
+            return Ok(incidentDto);
+        }
+
     }
+
 }
