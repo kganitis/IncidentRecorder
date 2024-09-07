@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35222.181
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IncidentRecorder", "IncidentRecorder.csproj", "{E7185907-3ED0-40F1-822C-7073D1E48C2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IncidentRecorder", "IncidentRecorder\IncidentRecorder.csproj", "{E7185907-3ED0-40F1-822C-7073D1E48C2C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IncidentRecorder.Tests", "..\IncidentRecorder.Tests\IncidentRecorder.Tests.csproj", "{B5D81399-0ACB-40B3-88AE-E905E53EB067}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IncidentRecorder.Tests", "IncidentRecorder.Tests\IncidentRecorder.Tests.csproj", "{B5D81399-0ACB-40B3-88AE-E905E53EB067}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
