@@ -31,9 +31,9 @@ namespace IncidentRecorder.Controllers
             var incidentDtos = incidents.Select(incident => new IncidentReadDTO
             {
                 Id = incident.Id,
-                DiseaseName = incident.Disease.Name,
-                PatientName = $"{incident.Patient.FirstName} {incident.Patient.LastName}",
-                Location = $"{incident.Location.City}, {incident.Location.Country}",
+                DiseaseName = incident.Disease?.Name,
+                PatientName = $"{incident.Patient?.FirstName} {incident.Patient?.LastName}",
+                Location = $"{incident.Location?.City}, {incident.Location?.Country}",
                 DateReported = incident.DateReported,
                 Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
             }).ToList();
@@ -62,9 +62,9 @@ namespace IncidentRecorder.Controllers
             var incidentDto = new IncidentReadDTO
             {
                 Id = incident.Id,
-                DiseaseName = incident.Disease.Name,
-                PatientName = $"{incident.Patient.FirstName} {incident.Patient.LastName}",
-                Location = $"{incident.Location.City}, {incident.Location.Country}",
+                DiseaseName = incident.Disease?.Name,
+                PatientName = $"{incident.Patient?.FirstName} {incident.Patient?.LastName}",
+                Location = $"{incident.Location?.City}, {incident.Location?.Country}",
                 DateReported = incident.DateReported,
                 Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
             };
@@ -74,7 +74,7 @@ namespace IncidentRecorder.Controllers
 
         // Create a new incident
         [HttpPost("create")]
-        public async Task<ActionResult<Incident>> PostIncident([FromBody] IncidentCreateDTO incidentDto)
+        public async Task<ActionResult<IncidentReadDTO>> PostIncident([FromBody] IncidentCreateDTO incidentDto)
         {
             var incident = new Incident
             {
@@ -90,8 +90,24 @@ namespace IncidentRecorder.Controllers
             _context.Incidents.Add(incident);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetIncident), new { id = incident.Id }, incident);
+            // Map the created incident to the DTO
+            var incidentReadDto = new IncidentReadDTO
+            {
+                Id = incident.Id,
+                DiseaseName = (await _context.Diseases.FindAsync(incident.DiseaseId))?.Name,
+                PatientName = (await _context.Patients.FindAsync(incident.PatientId)) != null
+                    ? $"{(await _context.Patients.FindAsync(incident.PatientId)).FirstName} {(await _context.Patients.FindAsync(incident.PatientId)).LastName}"
+                    : null,
+                Location = (await _context.Locations.FindAsync(incident.LocationId)) != null
+                    ? $"{(await _context.Locations.FindAsync(incident.LocationId)).City}, {(await _context.Locations.FindAsync(incident.LocationId)).Country}"
+                    : null,
+                DateReported = incident.DateReported,
+                Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
+            };
+
+            return CreatedAtAction(nameof(GetIncident), new { id = incident.Id }, incidentReadDto);
         }
+
 
         // Update an incident
         [HttpPut("{id}")]
@@ -219,12 +235,12 @@ namespace IncidentRecorder.Controllers
             var incidentDto = new IncidentDetailsDTO
             {
                 Id = incident.Id,
-                DiseaseName = incident.Disease.Name,
+                DiseaseName = incident.Disease?.Name,
                 DiseaseDescription = incident.Disease.Description,
-                PatientName = $"{incident.Patient.FirstName} {incident.Patient.LastName}",
+                PatientName = $"{incident.Patient?.FirstName} {incident.Patient?.LastName}",
                 PatientDateOfBirth = incident.Patient.DateOfBirth,
                 PatientContactInfo = incident.Patient.ContactInfo,
-                Location = $"{incident.Location.City}, {incident.Location.Country}",
+                Location = $"{incident.Location?.City}, {incident.Location?.Country}",
                 DateReported = incident.DateReported,
                 Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
             };
