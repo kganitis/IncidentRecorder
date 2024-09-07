@@ -9,11 +9,12 @@ namespace IncidentRecorder.Data
         {
         }
 
-        public DbSet<Incident> Incidents { get; set; }
-        public DbSet<Location> Locations { get; set; }
-        public DbSet<Disease> Diseases { get; set; }
-        public DbSet<Patient> Patients { get; set; }
-        public DbSet<Symptom> Symptoms { get; set; }
+        // Mark DbSet properties as virtual to allow mocking
+        public virtual DbSet<Patient> Patients { get; set; }
+        public virtual DbSet<Incident> Incidents { get; set; }
+        public virtual DbSet<Location> Locations { get; set; }
+        public virtual DbSet<Disease> Diseases { get; set; }
+        public virtual DbSet<Symptom> Symptoms { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
