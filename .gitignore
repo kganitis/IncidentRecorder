@@ -398,3 +398,5 @@ FodyWeavers.xsd
 *.sln.iml
 *.db-shm
 *.db-wal
+/IncidentRecorder/._incidentrecorder.db
+/IncidentRecorder/._incidentrecorder.db-wal
