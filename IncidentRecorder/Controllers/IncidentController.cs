@@ -31,7 +31,7 @@ namespace IncidentRecorder.Controllers
             var incidentDtos = incidents.Select(incident => new IncidentReadDTO
             {
                 Id = incident.Id,
-                DiseaseName = incident.Disease?.Name,
+                DiseaseName = incident.Disease.Name,
                 PatientName = $"{incident.Patient?.FirstName} {incident.Patient?.LastName}",
                 Location = $"{incident.Location?.City}, {incident.Location?.Country}",
                 DateReported = incident.DateReported,
@@ -62,7 +62,7 @@ namespace IncidentRecorder.Controllers
             var incidentDto = new IncidentReadDTO
             {
                 Id = incident.Id,
-                DiseaseName = incident.Disease?.Name,
+                DiseaseName = incident.Disease.Name,
                 PatientName = $"{incident.Patient?.FirstName} {incident.Patient?.LastName}",
                 Location = $"{incident.Location?.City}, {incident.Location?.Country}",
                 DateReported = incident.DateReported,
@@ -76,13 +76,43 @@ namespace IncidentRecorder.Controllers
         [HttpPost("create")]
         public async Task<ActionResult<IncidentReadDTO>> PostIncident([FromBody] IncidentCreateDTO incidentDto)
         {
+            // Validate DiseaseId
+            if (incidentDto.DiseaseId == 0 || !await _context.Diseases.AnyAsync(d => d.Id == incidentDto.DiseaseId))
+            {
+                return BadRequest("DiseaseId is required and must exist.");
+            }
+
+            // Validate optional foreign keys (PatientId, LocationId)
+            if (incidentDto.PatientId.HasValue && !await _context.Patients.AnyAsync(p => p.Id == incidentDto.PatientId.Value))
+            {
+                return BadRequest("Invalid PatientId.");
+            }
+
+            if (incidentDto.LocationId.HasValue && !await _context.Locations.AnyAsync(l => l.Id == incidentDto.LocationId.Value))
+            {
+                return BadRequest("Invalid LocationId.");
+            }
+
+            // Validate SymptomIds
+            if (incidentDto.SymptomIds != null && incidentDto.SymptomIds.Any())
+            {
+                var validSymptomIds = await _context.Symptoms.Select(s => s.Id).ToListAsync();
+                var invalidSymptomIds = incidentDto.SymptomIds.Except(validSymptomIds).ToList();
+
+                if (invalidSymptomIds.Any())
+                {
+                    return BadRequest($"Invalid SymptomIds: {string.Join(", ", invalidSymptomIds)}");
+                }
+            }
+
+            // Create the incident
             var incident = new Incident
             {
                 DiseaseId = incidentDto.DiseaseId,
                 PatientId = incidentDto.PatientId,
                 LocationId = incidentDto.LocationId,
-                DateReported = incidentDto.DateReported,
-                Symptoms = incidentDto.SymptomIds != null
+                DateReported = incidentDto.DateReported ?? DateTime.Now,
+                Symptoms = incidentDto.SymptomIds != null && incidentDto.SymptomIds.Any()
                     ? await _context.Symptoms.Where(s => incidentDto.SymptomIds.Contains(s.Id)).ToListAsync()
                     : new List<Symptom>()
             };
@@ -97,10 +127,10 @@ namespace IncidentRecorder.Controllers
                 DiseaseName = (await _context.Diseases.FindAsync(incident.DiseaseId))?.Name,
                 PatientName = (await _context.Patients.FindAsync(incident.PatientId)) != null
                     ? $"{(await _context.Patients.FindAsync(incident.PatientId)).FirstName} {(await _context.Patients.FindAsync(incident.PatientId)).LastName}"
-                    : null,
+                    : "Unknown",
                 Location = (await _context.Locations.FindAsync(incident.LocationId)) != null
                     ? $"{(await _context.Locations.FindAsync(incident.LocationId)).City}, {(await _context.Locations.FindAsync(incident.LocationId)).Country}"
-                    : null,
+                    : "Unknown",
                 DateReported = incident.DateReported,
                 Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
             };
@@ -208,8 +238,8 @@ namespace IncidentRecorder.Controllers
             {
                 Id = incident.Id,
                 DiseaseName = incident.Disease.Name,
-                PatientName = $"{incident.Patient.FirstName} {incident.Patient.LastName}",
-                Location = $"{incident.Location.City}, {incident.Location.Country}",
+                PatientName = $"{incident.Patient?.FirstName} {incident.Patient?.LastName}",
+                Location = $"{incident.Location?.City}, {incident.Location?.Country}",
                 DateReported = incident.DateReported
             }).ToList();
 
@@ -235,7 +265,7 @@ namespace IncidentRecorder.Controllers
             var incidentDto = new IncidentDetailsDTO
             {
                 Id = incident.Id,
-                DiseaseName = incident.Disease?.Name,
+                DiseaseName = incident.Disease.Name,
                 DiseaseDescription = incident.Disease.Description,
                 PatientName = $"{incident.Patient?.FirstName} {incident.Patient?.LastName}",
                 PatientDateOfBirth = incident.Patient.DateOfBirth,

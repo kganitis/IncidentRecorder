@@ -23,18 +23,27 @@ namespace IncidentRecorder.Data
                 .HasMany(i => i.Symptoms)
                 .WithMany();
 
-            // Other relationships
+            // Disease is required (non-nullable)
             modelBuilder.Entity<Incident>()
                 .HasOne(i => i.Disease)
-                .WithMany();
+                .WithMany()
+                .HasForeignKey(i => i.DiseaseId)
+                .IsRequired();
 
+            // Patient is optional (nullable)
             modelBuilder.Entity<Incident>()
                 .HasOne(i => i.Patient)
-                .WithMany();
+                .WithMany()
+                .HasForeignKey(i => i.PatientId)
+                .OnDelete(DeleteBehavior.SetNull);  // Allow nullable foreign key
 
+            // Location is optional (nullable)
             modelBuilder.Entity<Incident>()
                 .HasOne(i => i.Location)
-                .WithMany();
+                .WithMany()
+                .HasForeignKey(i => i.LocationId)
+                .OnDelete(DeleteBehavior.SetNull);  // Allow nullable foreign key
         }
+
     }
 }

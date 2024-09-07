@@ -46,7 +46,7 @@ namespace IncidentRecorder.Tests.IntegrationTests
             postResponse.EnsureSuccessStatusCode();
             var createdContent = await postResponse.Content.ReadAsStringAsync();
             var createdDisease = JsonConvert.DeserializeObject<DiseaseDTO>(createdContent);
-            var createdId = createdDisease.Id;
+            var createdId = createdDisease?.Id;
 
             // Act: Fetch the disease by the captured ID
             var getResponse = await _client.GetAsync($"/api/disease/{createdId}");
@@ -109,7 +109,7 @@ namespace IncidentRecorder.Tests.IntegrationTests
 
             var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
             var createdDisease = JsonConvert.DeserializeObject<DiseaseDTO>(postCreatedContent);
-            var createdId = createdDisease.Id;
+            var createdId = createdDisease?.Id;
 
             // Arrange: Prepare update data
             var updatedDisease = new DiseaseUpdateDTO
@@ -153,7 +153,7 @@ namespace IncidentRecorder.Tests.IntegrationTests
 
             var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
             var createdDisease = JsonConvert.DeserializeObject<DiseaseDTO>(postCreatedContent);
-            var createdId = createdDisease.Id;
+            var createdId = createdDisease?.Id;
 
             // Act: Delete the disease
             var deleteResponse = await _client.DeleteAsync($"/api/disease/{createdId}");

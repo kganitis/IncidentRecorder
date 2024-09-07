@@ -24,7 +24,7 @@ namespace IncidentRecorder.Tests.IntegrationTests
             var content = await response.Content.ReadAsStringAsync();
             var incidents = JsonConvert.DeserializeObject<List<IncidentReadDTO>>(content);
 
-            // Verify the seeded incident is returned (if incident data was seeded)
+            // Verify the seeded incident is returned
             Assert.NotNull(incidents);
             Assert.Contains(incidents, i => i.DiseaseName == "COVID-19" && i.PatientName == "John Doe");
         }
@@ -125,7 +125,7 @@ namespace IncidentRecorder.Tests.IntegrationTests
             // Arrange: Prepare update data
             var updatedIncident = new IncidentUpdateDTO
             {
-                DiseaseId = 2, // Assume 2 represents a different disease
+                DiseaseId = 2,
                 PatientId = 1,
                 LocationId = 1,
                 DateReported = System.DateTime.Now.AddDays(-1)
@@ -145,7 +145,7 @@ namespace IncidentRecorder.Tests.IntegrationTests
             var updatedIncidentResult = JsonConvert.DeserializeObject<IncidentReadDTO>(getContent);
 
             Assert.NotNull(updatedIncidentResult);
-            Assert.Equal("Gastroenteritis", updatedIncidentResult.DiseaseName); // Assuming disease 2 is correct
+            Assert.Equal("Gastroenteritis", updatedIncidentResult.DiseaseName);
         }
 
         // Test: Delete an existing incident

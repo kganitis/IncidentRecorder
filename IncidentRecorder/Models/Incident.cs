@@ -1,20 +1,21 @@
-﻿namespace IncidentRecorder.Models
+﻿using IncidentRecorder.Models;
+
+public class Incident
 {
-    public class Incident
-    {
-        public int Id { get; set; }
+    public int Id { get; set; }
 
-        public int DiseaseId { get; set; }
-        public Disease Disease { get; set; }
+    // Disease is required
+    public int DiseaseId { get; set; }
+    public Disease Disease { get; set; }
 
-        public DateTime DateReported { get; set; }
+    // Optional fields
+    public int? PatientId { get; set; }  // Nullable
+    public Patient? Patient { get; set; }
 
-        public int PatientId { get; set; }
-        public Patient Patient { get; set; }
+    public int? LocationId { get; set; }  // Nullable
+    public Location? Location { get; set; }
 
-        public int LocationId { get; set; }
-        public Location Location { get; set; }
+    public DateTime DateReported { get; set; } = DateTime.Now;  // Optional, with default value
 
-        public List<Symptom> Symptoms { get; set; }
-    }
+    public List<Symptom> Symptoms { get; set; } = new List<Symptom>();  // Optional, default to an empty list
 }

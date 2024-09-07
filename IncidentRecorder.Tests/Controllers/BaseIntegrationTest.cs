@@ -94,7 +94,7 @@ namespace IncidentRecorder.Tests.Integration
                 Patient = new Patient { Id = 4, FirstName = "John", LastName = "Doe", ContactInfo = "john.doe@medemail.com", Gender = "Male" },
                 Location = new Location { Id = 4, City = "London", Country = "UK" },
                 DateReported = DateTime.Now,
-                Symptoms = new List<Symptom> { new Symptom { Id = 4, Name = "Cough", Description = "Persistent cough for more than 3 weeks" } }
+                Symptoms = new List<Symptom> { new Symptom { Id = 4, Name = "Persisent Cough", Description = "Persistent cough for more than 3 weeks" } }
             });
             context.Incidents.Add(new Incident
             {
