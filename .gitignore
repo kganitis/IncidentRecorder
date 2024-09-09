@@ -400,3 +400,4 @@ FodyWeavers.xsd
 *.db-wal
 /IncidentRecorder/._incidentrecorder.db
 /IncidentRecorder/._incidentrecorder.db-wal
+/Plan.txt
