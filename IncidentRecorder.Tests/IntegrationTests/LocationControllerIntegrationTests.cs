@@ -7,207 +7,313 @@ namespace IncidentRecorder.Tests.Integration
 {
     public class LocationControllerIntegrationTests : BaseIntegrationTest
     {
+        private const string LocationApiUrl = "/api/location";
+
         public LocationControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
 
-        // Test: Get all locations with seeded data
         [Fact]
         public async Task GetLocations_ReturnsOkResult_WithSeededData()
         {
-            var response = await _client.GetAsync("/api/location");
+            // Act
+            var response = await _client.GetAsync(LocationApiUrl);
 
+            // Assert
             response.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            var content = await response.Content.ReadAsStringAsync();
-            var locations = JsonConvert.DeserializeObject<List<LocationDTO>>(content);
-
+            var locations = await DeserializeResponse<List<LocationDTO>>(response);
             Assert.NotNull(locations);
-            Assert.Contains(locations, l => l.City == "New York" && l.Country == "USA");
-        }
 
-        // Test: Get a single location by dynamically capturing ID after creation
-        [Fact]
-        public async Task GetLocationById_ReturnsOkResult_WhenLocationExists()
-        {
-            var newLocation = new LocationCreateDTO
+            var expectedLocations = new[]
             {
-                City = "Berlin",
-                Country = "Germany"
+                new { Id = 1, City = "New York", Country = "USA" },
+                // TODO check for all the locations
+                new { Id = 6, City = "Dublin", Country = "Ireland" }
             };
 
-            var content = new StringContent(JsonConvert.SerializeObject(newLocation), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/location", content);
-            postResponse.EnsureSuccessStatusCode();
-            var createdContent = await postResponse.Content.ReadAsStringAsync();
-            var createdLocation = JsonConvert.DeserializeObject<LocationDTO>(createdContent);
-            var createdId = createdLocation.Id;
-
-            var getResponse = await _client.GetAsync($"/api/location/{createdId}");
-
-            getResponse.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-
-            var getContent = await getResponse.Content.ReadAsStringAsync();
-            var location = JsonConvert.DeserializeObject<LocationDTO>(getContent);
-
-            Assert.NotNull(location);
-            Assert.Equal(createdId, location.Id);
-            Assert.Equal("Berlin", location.City);
-            Assert.Equal("Germany", location.Country);
+            foreach (var expected in expectedLocations)
+            {
+                Assert.Contains(locations, i => i.Id == expected.Id && i.City == expected.City && i.Country == expected.Country);
+            }
         }
 
-        // Test: Post a new location and verify creation
+        [Theory]
+        [InlineData(1, "New York, USA")]
+        [InlineData(2, "Toronto, Canada")]
+        [InlineData(3, "Madrid, Spain")]
+        [InlineData(4, "London, UK")]
+        [InlineData(5, "Sydney, Australia")]
+        [InlineData(6, "Dublin, Ireland")]
+        public async Task GetLocationById_ReturnsOkResult_WhenLocationExists(int id, string cityCountry)
+        {
+            // Act
+            var response = await _client.GetAsync($"{LocationApiUrl}/{id}");
+
+            // Assert
+            var location = await DeserializeResponse<LocationDTO>(response);
+            Assert.NotNull(location);
+            Assert.Equal(id, location.Id);
+            Assert.Equal(cityCountry, $"{location.City}, {location.Country}");
+        }
+
         [Fact]
         public async Task PostLocation_CreatesNewLocation()
         {
-            var newLocation = new LocationCreateDTO
-            {
-                City = "Paris",
-                Country = "France"
-            };
+            // Arrange: Prepare new location data
+            var newLocation = new LocationCreateDTO { City = "Tokyo", Country = "Japan" };
 
-            var content = new StringContent(JsonConvert.SerializeObject(newLocation), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("/api/location", content);
+            // Act
+            var response = await _client.PostAsync(LocationApiUrl, CreateContent(newLocation));
 
+            // Assert
             response.EnsureSuccessStatusCode();
+            var createdLocation = await DeserializeResponse<LocationDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var createdLocation = JsonConvert.DeserializeObject<LocationDTO>(responseContent);
-
             Assert.NotNull(createdLocation);
-            Assert.Equal("Paris", createdLocation.City);
-            Assert.Equal("France", createdLocation.Country);
+            Assert.Equal("Tokyo", createdLocation.City);
+            Assert.Equal("Japan", createdLocation.Country);
         }
 
-        // Test: Update an existing location
         [Fact]
         public async Task PutLocation_UpdatesExistingLocation()
         {
-            var newLocation = new LocationCreateDTO
-            {
-                City = "Rome",
-                Country = "Italy"
-            };
+            // Arrange: Create a new location to update
+            var newLocation = new LocationCreateDTO { City = "Test City", Country = "Test Country" };
 
-            var postContent = new StringContent(JsonConvert.SerializeObject(newLocation), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/location", postContent);
+            // Get the ID of the newly created location
+            var postResponse = await _client.PostAsync(LocationApiUrl, CreateContent(newLocation));
             postResponse.EnsureSuccessStatusCode();
-
-            var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
-            var createdLocation = JsonConvert.DeserializeObject<LocationDTO>(postCreatedContent);
+            var createdLocation = await DeserializeResponse<LocationDTO>(postResponse);
             var createdId = createdLocation.Id;
 
-            var updatedLocation = new LocationUpdateDTO
-            {
-                City = "Milan",
-                Country = "Italy"
-            };
+            // Arrange: Prepare updated location data
+            var updatedLocation = new LocationUpdateDTO { City = "Updated City", Country = "Updated Country" };
 
-            var updateContent = new StringContent(JsonConvert.SerializeObject(updatedLocation), System.Text.Encoding.UTF8, "application/json");
+            // Act
+            var putResponse = await _client.PutAsync($"{LocationApiUrl}/{createdId}", CreateContent(updatedLocation));
 
-            var putResponse = await _client.PutAsync($"/api/location/{createdId}", updateContent);
-
+            // Assert
             Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
-            var getResponse = await _client.GetAsync($"/api/location/{createdId}");
-            var getContent = await getResponse.Content.ReadAsStringAsync();
-            var updatedLocationResult = JsonConvert.DeserializeObject<LocationDTO>(getContent);
+            // Verify that the location was updated by fetching it again
+            var getResponse = await _client.GetAsync($"{LocationApiUrl}/{createdId}");
+            var updatedLocationResult = await DeserializeResponse<LocationDTO>(getResponse);
 
             Assert.NotNull(updatedLocationResult);
-            Assert.Equal("Milan", updatedLocationResult.City);
-            Assert.Equal("Italy", updatedLocationResult.Country);
+            Assert.Equal("Updated City", updatedLocationResult.City);
+            Assert.Equal("Updated Country", updatedLocationResult.Country);
+
+            // Delete the updated location to clean up
+            var deleteResponse = await _client.DeleteAsync($"{LocationApiUrl}/{createdId}");
+            deleteResponse.EnsureSuccessStatusCode();
         }
 
-        // Test: Delete an existing location
         [Fact]
         public async Task DeleteLocation_DeletesExistingLocation()
         {
-            var newLocation = new LocationCreateDTO
-            {
-                City = "Tokyo",
-                Country = "Japan"
-            };
+            // Arrange: Create a new location to get its ID
+            var newLocation = new LocationCreateDTO { City = "Test City", Country = "Test Country" };
 
-            var postContent = new StringContent(JsonConvert.SerializeObject(newLocation), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/location", postContent);
+            var postResponse = await _client.PostAsync(LocationApiUrl, CreateContent(newLocation));
             postResponse.EnsureSuccessStatusCode();
-
-            var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
-            var createdLocation = JsonConvert.DeserializeObject<LocationDTO>(postCreatedContent);
+            var createdLocation = await DeserializeResponse<LocationDTO>(postResponse);
             var createdId = createdLocation.Id;
 
-            var deleteResponse = await _client.DeleteAsync($"/api/location/{createdId}");
+            // Act
+            var deleteResponse = await _client.DeleteAsync($"{LocationApiUrl}/{createdId}");
 
+            // Assert
             Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-            var getResponse = await _client.GetAsync($"/api/location/{createdId}");
+            // Verify that the location no longer exists
+            var getResponse = await _client.GetAsync($"{LocationApiUrl}/{createdId}");
             Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
         }
 
-        // New Tests for Error Handling
-
-        // Test: Create Location with Missing Required Fields (400 Bad Request)
         [Fact]
         public async Task PostLocation_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
-            var invalidLocation = new LocationCreateDTO
-            {
-                Country = "France"  // Missing City
-            };
+            // Arrange: Create new locations with missing fields
+            var invalidLocation1 = new LocationCreateDTO { Country = "Missing City" };
+            var invalidLocation2 = new LocationCreateDTO { City = "Missing Country" };
 
-            var content = new StringContent(JsonConvert.SerializeObject(invalidLocation), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("/api/location", content);
+            // Act
+            var response1 = await _client.PostAsync(LocationApiUrl, CreateContent(invalidLocation1));
+            var response2 = await _client.PostAsync(LocationApiUrl, CreateContent(invalidLocation2));
 
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response1.StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
         }
 
-        // Test: Create Location with Invalid Data Type (400 Bad Request)
         [Fact]
         public async Task PostLocation_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
         {
-            var invalidLocation = new
-            {
-                City = 12345,  // Invalid data type (should be a string)
-                Country = "France"
-            };
+            // Arrange: Provide an integer where a string is expected
+            var invalidLocation1 = new { City = 12345, Country = "Invalid city type" };
+            var invalidLocation2 = new { City = "Invalid country type", Country = 12345 };
 
-            var content = new StringContent(JsonConvert.SerializeObject(invalidLocation), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("/api/location", content);
+            // Act
+            var response1 = await _client.PostAsync(LocationApiUrl, CreateContent(invalidLocation1));
+            var response2 = await _client.PostAsync(LocationApiUrl, CreateContent(invalidLocation2));
 
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response1.StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
         }
 
-        // Test: Get Non-existent Location (404 Not Found)
+        [Fact]
+        public async Task PutLocation_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
+        {
+            // Arrange: Provide an invalid payload with an integer where a string is expected
+            var invalidLocation1 = "{ \"city\": 12345 }";
+            var invalidLocation2 = "{ \"country\": 12345 }";
+
+            var content1 = new StringContent(invalidLocation1, System.Text.Encoding.UTF8, "application/json");
+            var content2 = new StringContent(invalidLocation2, System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response1 = await _client.PutAsync($"{LocationApiUrl}/1", content1);
+            var response2 = await _client.PutAsync($"{LocationApiUrl}/2", content2);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response1.StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
+        }
+
         [Fact]
         public async Task GetLocationById_ReturnsNotFound_WhenLocationDoesNotExist()
         {
-            var response = await _client.GetAsync("/api/location/999");
+            // Act: Try to get a non-existing location
+            var response = await _client.GetAsync($"{LocationApiUrl}/999");
+
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        // Test: Update Non-existent Location (404 Not Found)
         [Fact]
         public async Task PutLocation_ReturnsNotFound_WhenLocationDoesNotExist()
         {
-            var updateLocation = new LocationUpdateDTO
-            {
-                City = "Non-existent City",
-                Country = "Non-existent Country"
-            };
+            // Arrange
+            var updateLocation = new LocationUpdateDTO { };
 
-            var content = new StringContent(JsonConvert.SerializeObject(updateLocation), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PutAsync("/api/location/999", content);
+            // Act: Try to update a non-existing location
+            var response = await _client.PutAsync($"{LocationApiUrl}/999", CreateContent(updateLocation));
 
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        // Test: Delete Non-existent Location (404 Not Found)
         [Fact]
         public async Task DeleteLocation_ReturnsNotFound_WhenLocationDoesNotExist()
         {
-            var response = await _client.DeleteAsync("/api/location/999");
+            // Act: Try to delete a non-existing location
+            var response = await _client.DeleteAsync($"{LocationApiUrl}/999");
+
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetLocation_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.GetAsync($"{LocationApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutLocation_ReturnsBadRequest_WithInvalidID()
+        {
+            // Arrange
+            var updateLocation = new LocationUpdateDTO { };
+
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.PutAsync($"{LocationApiUrl}/invalid-id", CreateContent(updateLocation));
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteLocation_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.DeleteAsync($"{LocationApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PostLocation_ReturnsBadRequest_WhenPayloadIsEmpty()
+        {
+            // Arrange: Create an empty payload
+            var emptyPayload = "{}";
+
+            var content = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await _client.PostAsync(LocationApiUrl, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Contains("The City field is required.", responseContent);
+            Assert.Contains("The Country field is required.", responseContent);
+        }
+
+        [Fact]
+        public async Task PutLocation_ReturnsNoContent_WhenPayloadIsEmpty()
+        {
+            // Arrange: Fetch an existing location
+            var getResponseBeforeUpdate = await _client.GetAsync($"{LocationApiUrl}/1");
+            getResponseBeforeUpdate.EnsureSuccessStatusCode();
+
+            var locationBeforeUpdate = await DeserializeResponse<LocationDTO>(getResponseBeforeUpdate);
+
+            // Act: Send an empty payload to update the location
+            var emptyPayload = "{}"; // Empty JSON object
+            var updateContent = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
+
+            var putResponse = await _client.PutAsync($"{LocationApiUrl}/1", updateContent);
+
+            // Assert: The response should be 204 No Content
+            Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
+
+            // Act: Fetch the location again after the update
+            var getResponseAfterUpdate = await _client.GetAsync($"{LocationApiUrl}/1");
+            var locationAfterUpdate = await DeserializeResponse<LocationDTO>(getResponseAfterUpdate);
+
+            // Assert: The location should remain unchanged
+            Assert.Equal(locationBeforeUpdate.City, locationAfterUpdate.City);
+            Assert.Equal(locationBeforeUpdate.Country, locationAfterUpdate.Country);
+        }
+
+        [Fact]
+        public async Task PostLocation_ReturnsBadRequest_WhenLocationCityIsNotUnique()
+        {
+            // Arrange: Create an existing location
+            var duplicateLocation = new LocationCreateDTO { City = "New York",  Country = "USA" };
+
+            // Act: Try to create a duplicate location
+            var response = await _client.PostAsync(LocationApiUrl, CreateContent(duplicateLocation));
+
+            // Assert: BadRequest due to uniqueness violation
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutLocation_ReturnsBadRequest_WhenLocationCityIsNotUnique()
+        {
+            // Arrange: Prepare an existing location
+            var duplicateLocation = new LocationUpdateDTO { City = "New York", Country = "USA" };
+
+            // Act: Try to update a location with the duplicate data
+            var response = await _client.PutAsync($"{LocationApiUrl}/2", CreateContent(duplicateLocation));
+
+            // Assert: BadRequest due to uniqueness violation
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
     }
 }

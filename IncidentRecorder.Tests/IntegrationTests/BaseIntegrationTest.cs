@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using IncidentRecorder.Data;
 using Microsoft.EntityFrameworkCore;
 using IncidentRecorder.Models;
+using Newtonsoft.Json;
 
 namespace IncidentRecorder.Tests.Integration
 {
@@ -55,6 +56,14 @@ namespace IncidentRecorder.Tests.Integration
 
             _client = _factory.CreateClient();
         }
+
+        protected async Task<T> DeserializeResponse<T>(HttpResponseMessage response)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<T>(content);
+        }
+
+        protected StringContent CreateContent(object data) => new StringContent(JsonConvert.SerializeObject(data), System.Text.Encoding.UTF8, "application/json");
 
         // Seed initial data into the in-memory database with required fields
         private void SeedTestData(IncidentContext context)

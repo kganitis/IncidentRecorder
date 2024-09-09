@@ -95,7 +95,21 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PutIncident_UpdatesExistingIncident()
         {
-            var id = 2;
+            // Arrange: Create a new incident to update
+            var newIncident = new IncidentCreateDTO
+            {
+                DiseaseId = 1,
+                PatientId = 2,
+                LocationId = 3,
+                DateReported = DateTime.Now,
+                SymptomIds = new List<int> { 4 }
+            };
+
+            // Get the ID of the newly created incident
+            var postResponse = await _client.PostAsync($"{IncidentApiUrl}/create", CreateContent(newIncident));
+            postResponse.EnsureSuccessStatusCode();
+            var createdIncident = await DeserializeResponse<IncidentReadDTO>(postResponse);
+            var createdId = createdIncident.Id;
 
             // Arrange: Prepare updated incident data
             var updatedIncident = new IncidentUpdateDTO
@@ -108,21 +122,25 @@ namespace IncidentRecorder.Tests.Integration
             };
 
             // Act
-            var putResponse = await _client.PutAsync($"{IncidentApiUrl}/{id}", CreateContent(updatedIncident));
+            var putResponse = await _client.PutAsync($"{IncidentApiUrl}/{createdId}", CreateContent(updatedIncident));
 
             // Assert
             Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
             // Verify that the incident was updated by fetching it again
-            var getResponse = await _client.GetAsync($"{IncidentApiUrl}/{id}");
+            var getResponse = await _client.GetAsync($"{IncidentApiUrl}/{createdId}");
             var updatedIncidentResult = await DeserializeResponse<IncidentReadDTO>(getResponse);
 
             Assert.NotNull(updatedIncidentResult);
             Assert.Equal("COVID-19", updatedIncidentResult.DiseaseName);
             Assert.Equal("John Doe", updatedIncidentResult.PatientName);
             Assert.Equal("New York, USA", updatedIncidentResult.Location);
-            Assert.Equal("Nausea", updatedIncidentResult.Symptoms[0]);
-            Assert.Equal("Cough", updatedIncidentResult.Symptoms[1]);
+            Assert.Equal(2, updatedIncidentResult.Symptoms.Count);
+            Assert.Contains("Cough", updatedIncidentResult.Symptoms);
+            Assert.Contains("Nausea", updatedIncidentResult.Symptoms);
+
+            // Delete the updated incident to clean up
+            var deleteResponse = await _client.DeleteAsync($"{IncidentApiUrl}/{createdId}");
         }
 
         [Fact]

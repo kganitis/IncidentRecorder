@@ -2,8 +2,6 @@
 using IncidentRecorder.DTOs.Disease;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using IncidentRecorder.Models;
-using IncidentRecorder.DTOs.Incident;
 
 namespace IncidentRecorder.Tests.Integration
 {
@@ -12,14 +10,6 @@ namespace IncidentRecorder.Tests.Integration
         private const string DiseaseApiUrl = "/api/disease";
 
         public DiseaseControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
-
-        private async Task<T> DeserializeResponse<T>(HttpResponseMessage response)
-        {
-            var content = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<T>(content);
-        }
-
-        private StringContent CreateContent(object data) => new StringContent(JsonConvert.SerializeObject(data), System.Text.Encoding.UTF8, "application/json");
 
         [Fact]
         public async Task GetDiseases_ReturnsOkResult_WithSeededData()
@@ -85,24 +75,34 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PutDisease_UpdatesExistingDisease()
         {
-            var id = 2;
+            // Arrange: Create a new disease to update
+            var newDisease = new DiseaseCreateDTO { Name = "Test Flu", Description = "Test flu description" };
+
+            // Get the ID of the newly created disease
+            var postResponse = await _client.PostAsync(DiseaseApiUrl, CreateContent(newDisease));
+            postResponse.EnsureSuccessStatusCode();
+            var createdDisease = await DeserializeResponse<DiseaseDTO>(postResponse);
+            var createdId = createdDisease.Id;
 
             // Arrange: Prepare updated disease data
             var updatedDisease = new DiseaseUpdateDTO { Name = "Updated Flu", Description = "Updated flu description" };
 
             // Act
-            var putResponse = await _client.PutAsync($"{DiseaseApiUrl}/{id}", CreateContent(updatedDisease));
+            var putResponse = await _client.PutAsync($"{DiseaseApiUrl}/{createdId}", CreateContent(updatedDisease));
 
             // Assert
             Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
             // Verify that the disease was updated by fetching it again
-            var getResponse = await _client.GetAsync($"{DiseaseApiUrl}/{id}");
+            var getResponse = await _client.GetAsync($"{DiseaseApiUrl}/{createdId}");
             var updatedDiseaseResult = await DeserializeResponse<DiseaseDTO>(getResponse);
 
             Assert.NotNull(updatedDiseaseResult);
             Assert.Equal("Updated Flu", updatedDiseaseResult.Name);
             Assert.Equal("Updated flu description", updatedDiseaseResult.Description);
+
+            // Delete the updated disease to clean up
+            var deleteResponse = await _client.DeleteAsync($"{DiseaseApiUrl}/{createdId}");
         }
 
         [Fact]
@@ -255,13 +255,13 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PutDisease_ReturnsNoContent_WhenPayloadIsEmpty()
         {
-            // Arrange: Fetch the existing incident with ID = 1 before the update
+            // Arrange: Fetch the existing disease with ID = 1 before the update
             var getResponseBeforeUpdate = await _client.GetAsync($"{DiseaseApiUrl}/1");
             getResponseBeforeUpdate.EnsureSuccessStatusCode();
 
             var diseaseBeforeUpdate = await DeserializeResponse<DiseaseDTO>(getResponseBeforeUpdate);
 
-            // Act: Send an empty payload to update the incident
+            // Act: Send an empty payload to update the disease
             var emptyPayload = "{}"; // Empty JSON object
             var updateContent = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
 
@@ -270,11 +270,11 @@ namespace IncidentRecorder.Tests.Integration
             // Assert: The response should be 204 No Content
             Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
-            // Act: Fetch the incident again after the update
+            // Act: Fetch the disease again after the update
             var getResponseAfterUpdate = await _client.GetAsync($"{DiseaseApiUrl}/1");
             var diseaseAfterUpdate = await DeserializeResponse<DiseaseDTO>(getResponseAfterUpdate);
 
-            // Assert: The incident should remain unchanged
+            // Assert: The disease should remain unchanged
             Assert.Equal(diseaseBeforeUpdate.Name, diseaseAfterUpdate.Name);
             Assert.Equal(diseaseBeforeUpdate.Description, diseaseAfterUpdate.Description);
         }
