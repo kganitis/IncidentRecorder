@@ -43,7 +43,11 @@ namespace IncidentRecorder.Data
                 .WithMany()
                 .HasForeignKey(i => i.LocationId)
                 .OnDelete(DeleteBehavior.SetNull);  // Allow nullable foreign key
-        }
 
+            // Add unique index to the Disease.Name column
+            modelBuilder.Entity<Disease>()
+                .HasIndex(d => d.Name)
+                .IsUnique();
+        }
     }
 }
