@@ -33,6 +33,7 @@ namespace IncidentRecorder.Tests.Integration
             var expectedIncidents = new[]
             {
                 new { Id = 1, DiseaseName = "COVID-19", PatientName = "John Doe" },
+                // TODO check for all the incidents
                 new { Id = 6, DiseaseName = "Chickenpox", PatientName = "Liam O'Reilly" }
             };
 
@@ -62,6 +63,7 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PostIncident_CreatesNewIncident()
         {
+            // Arrange: Prepare new incident data
             var newIncident = new IncidentCreateDTO
             {
                 DiseaseId = 1,
@@ -86,6 +88,8 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PutIncident_UpdatesExistingIncident()
         {
             var id = 2;
+
+            // Arrange: Prepare updated incident data
             var updatedIncident = new IncidentUpdateDTO
             {
                 DiseaseId = 1,
@@ -107,6 +111,10 @@ namespace IncidentRecorder.Tests.Integration
 
             Assert.NotNull(updatedIncidentResult);
             Assert.Equal("COVID-19", updatedIncidentResult.DiseaseName);
+            Assert.Equal("John Doe", updatedIncidentResult.PatientName);
+            Assert.Equal("New York, USA", updatedIncidentResult.Location);
+            Assert.Equal("Nausea", updatedIncidentResult.Symptoms[0]);
+            Assert.Equal("Cough", updatedIncidentResult.Symptoms[1]);
         }
 
         [Fact]
@@ -127,7 +135,7 @@ namespace IncidentRecorder.Tests.Integration
             var createdIncident = await DeserializeResponse<IncidentReadDTO>(postResponse);
             var createdId = createdIncident.Id;
 
-            // Act: Delete the incident
+            // Act
             var deleteResponse = await _client.DeleteAsync($"{IncidentApiUrl}/{createdId}");
 
             // Assert
@@ -141,6 +149,7 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PostIncident_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
+            // Arrange: Create an incident with missing required fields
             var invalidIncident = new IncidentCreateDTO
             {
                 DateReported = DateTime.Now,
@@ -161,6 +170,7 @@ namespace IncidentRecorder.Tests.Integration
         [InlineData(1, 1, 1, new[] { 999 })]
         public async Task PostIncident_ReturnsBadRequest_WhenNonExistingForeignKeyIsProvided(int diseaseId, int patientId, int locationId, int[] symptomIds)
         {
+            // Arrange: Create an incident with non-existing foreign key values
             var invalidIncident = new IncidentCreateDTO
             {
                 DiseaseId = diseaseId,
@@ -201,7 +211,7 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PutIncident_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
         {
             // Arrange: Create an invalid payload with a string where an integer is expected
-            var invalidIncident = "{ \"DiseaseId\": \"invalid\" }";  // Invalid JSON for DiseaseId (should be an integer)
+            var invalidIncident = "{ \"diseaseId\": \"invalid\" }";  // Invalid JSON for DiseaseId (should be an integer)
 
             var content = new StringContent(invalidIncident, System.Text.Encoding.UTF8, "application/json");
 
@@ -225,12 +235,11 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PutIncident_ReturnsNotFound_WhenIncidentDoesNotExist()
         {
+            // Arrange
             var updateIncident = new IncidentUpdateDTO { };
 
-            var content = CreateContent(updateIncident);
-
             // Act: Try to update a non-existent incident
-            var response = await _client.PutAsync($"{IncidentApiUrl}/999", content);
+            var response = await _client.PutAsync($"{IncidentApiUrl}/999", CreateContent(updateIncident));
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -247,14 +256,33 @@ namespace IncidentRecorder.Tests.Integration
         }
 
         [Fact]
+        public async Task GetIncident_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.GetAsync($"{IncidentApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
         public async Task PutIncident_ReturnsBadRequest_WithInvalidID()
         {
+            // Arrange
             var updateIncident = new IncidentUpdateDTO { };
 
-            var content = CreateContent(updateIncident);
-
             // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
-            var response = await _client.PutAsync($"{IncidentApiUrl}/invalid-id", content);
+            var response = await _client.PutAsync($"{IncidentApiUrl}/invalid-id", CreateContent(updateIncident));
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteIncident_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.DeleteAsync($"{IncidentApiUrl}/invalid-id");
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -263,6 +291,7 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PostIncident_ReturnsBadRequest_WhenPayloadIsEmpty()
         {
+            // Arrange: Create an empty payload
             var emptyPayload = "{}";
 
             var content = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
@@ -277,7 +306,7 @@ namespace IncidentRecorder.Tests.Integration
         }
 
         [Fact]
-        public async Task PutIncident_ReturnsNoContent_WhenPayloadIsEmpty_AndIncidentRemainsUnchanged()
+        public async Task PutIncident_ReturnsNoContent_WhenPayloadIsEmpty()
         {
             // Arrange: Fetch the existing incident with ID = 1 before the update
             var getResponseBeforeUpdate = await _client.GetAsync($"{IncidentApiUrl}/1");

@@ -2,210 +2,277 @@
 using IncidentRecorder.DTOs.Disease;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using IncidentRecorder.Models;
+using IncidentRecorder.DTOs.Incident;
 
 namespace IncidentRecorder.Tests.Integration
 {
     public class DiseaseControllerIntegrationTests : BaseIntegrationTest
     {
+        private const string DiseaseApiUrl = "/api/disease";
+
         public DiseaseControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
 
-        // Test: Get all diseases with seeded data
+        private async Task<T> DeserializeResponse<T>(HttpResponseMessage response)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<T>(content);
+        }
+
+        private StringContent CreateContent(object data) => new StringContent(JsonConvert.SerializeObject(data), System.Text.Encoding.UTF8, "application/json");
+
         [Fact]
         public async Task GetDiseases_ReturnsOkResult_WithSeededData()
         {
-            var response = await _client.GetAsync("/api/disease");
+            // Act
+            var response = await _client.GetAsync(DiseaseApiUrl);
 
+            // Assert
             response.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            var content = await response.Content.ReadAsStringAsync();
-            var diseases = JsonConvert.DeserializeObject<List<DiseaseDTO>>(content);
-
+            var diseases = await DeserializeResponse<List<DiseaseDTO>>(response);
             Assert.NotNull(diseases);
-            Assert.Equal("COVID-19", diseases[0].Name);
-        }
 
-        // Test: Get a single disease by dynamically capturing ID after creation
-        [Fact]
-        public async Task GetDiseaseById_ReturnsOkResult_WhenDiseaseExists()
-        {
-            var newDisease = new DiseaseDTO
+            var expectedDiseases = new[]
             {
-                Name = "Flu",
-                Description = "Seasonal flu virus"
+                new { Id = 1, Name = "COVID-19", Description = "Coronavirus Disease" },
+                // TODO check for all the diseases
+                new { Id = 6, Name = "Chickenpox", Description = "Highly contagious viral infection causing an itchy rash" }
             };
 
-            var content = new StringContent(JsonConvert.SerializeObject(newDisease), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/disease", content);
-            postResponse.EnsureSuccessStatusCode();
-            var createdContent = await postResponse.Content.ReadAsStringAsync();
-            var createdDisease = JsonConvert.DeserializeObject<DiseaseDTO>(createdContent);
-            var createdId = createdDisease?.Id;
-
-            var getResponse = await _client.GetAsync($"/api/disease/{createdId}");
-
-            getResponse.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-
-            var getContent = await getResponse.Content.ReadAsStringAsync();
-            var disease = JsonConvert.DeserializeObject<DiseaseDTO>(getContent);
-
-            Assert.NotNull(disease);
-            Assert.Equal(createdId, disease.Id);
-            Assert.Equal("Flu", disease.Name);
+            foreach (var expected in expectedDiseases)
+            {
+                Assert.Contains(diseases, i => i.Id == expected.Id && i.Name == expected.Name && i.Description == expected.Description);
+            }
         }
 
-        // Test: Post a new disease and verify creation
+        [Theory]
+        [InlineData(1, "COVID-19")]
+        [InlineData(6, "Chickenpox")]
+        public async Task GetDiseaseById_ReturnsOkResult_WhenDiseaseExists(int id, string name)
+        {
+            // Act
+            var response = await _client.GetAsync($"{DiseaseApiUrl}/{id}");
+
+            // Assert
+            var disease = await DeserializeResponse<DiseaseDTO>(response);
+            Assert.NotNull(disease);
+            Assert.Equal(id, disease.Id);
+            Assert.Equal(name, disease.Name);
+        }
+
         [Fact]
         public async Task PostDisease_CreatesNewDisease()
         {
-            var newDisease = new DiseaseDTO
-            {
-                Name = "Flu H1N1",
-                Description = "H1N1 virus"
-            };
+            // Arrange: Prepare new disease data
+            var newDisease = new DiseaseCreateDTO { Name = "Flu H1N1", Description = "H1N1 virus" };
 
-            var content = new StringContent(JsonConvert.SerializeObject(newDisease), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("/api/disease", content);
+            // Act
+            var response = await _client.PostAsync(DiseaseApiUrl, CreateContent(newDisease));
 
+            // Assert
             response.EnsureSuccessStatusCode();
+            var createdDisease = await DeserializeResponse<DiseaseDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var createdDisease = JsonConvert.DeserializeObject<DiseaseDTO>(responseContent);
-
             Assert.NotNull(createdDisease);
             Assert.Equal("Flu H1N1", createdDisease.Name);
+            Assert.Equal("H1N1 virus", createdDisease.Description);
         }
 
-        // Test: Update an existing disease
         [Fact]
         public async Task PutDisease_UpdatesExistingDisease()
         {
-            var newDisease = new DiseaseDTO
-            {
-                Name = "Flu",
-                Description = "Seasonal flu virus"
-            };
+            var id = 2;
 
-            var postContent = new StringContent(JsonConvert.SerializeObject(newDisease), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/disease", postContent);
-            postResponse.EnsureSuccessStatusCode();
+            // Arrange: Prepare updated disease data
+            var updatedDisease = new DiseaseUpdateDTO { Name = "Updated Flu", Description = "Updated flu description" };
 
-            var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
-            var createdDisease = JsonConvert.DeserializeObject<DiseaseDTO>(postCreatedContent);
-            var createdId = createdDisease?.Id;
+            // Act
+            var putResponse = await _client.PutAsync($"{DiseaseApiUrl}/{id}", CreateContent(updatedDisease));
 
-            var updatedDisease = new DiseaseUpdateDTO
-            {
-                Name = "Updated Flu",
-                Description = "Updated flu description"
-            };
-
-            var updateContent = new StringContent(JsonConvert.SerializeObject(updatedDisease), System.Text.Encoding.UTF8, "application/json");
-
-            var putResponse = await _client.PutAsync($"/api/disease/{createdId}", updateContent);
-
+            // Assert
             Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
-            var getResponse = await _client.GetAsync($"/api/disease/{createdId}");
-            var getContent = await getResponse.Content.ReadAsStringAsync();
-            var updatedDiseaseResult = JsonConvert.DeserializeObject<DiseaseDTO>(getContent);
+            // Verify that the disease was updated by fetching it again
+            var getResponse = await _client.GetAsync($"{DiseaseApiUrl}/{id}");
+            var updatedDiseaseResult = await DeserializeResponse<DiseaseDTO>(getResponse);
 
             Assert.NotNull(updatedDiseaseResult);
             Assert.Equal("Updated Flu", updatedDiseaseResult.Name);
             Assert.Equal("Updated flu description", updatedDiseaseResult.Description);
         }
 
-        // Test: Delete an existing disease
         [Fact]
         public async Task DeleteDisease_DeletesExistingDisease()
         {
-            var newDisease = new DiseaseDTO
-            {
-                Name = "Test Disease",
-                Description = "Test Description"
-            };
+            // Arrange: Create a new disease to get its ID
+            var newDisease = new DiseaseCreateDTO { Name = "Test Disease", Description = "Test Description" };
 
-            var postContent = new StringContent(JsonConvert.SerializeObject(newDisease), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/disease", postContent);
+            var postResponse = await _client.PostAsync(DiseaseApiUrl, CreateContent(newDisease));
             postResponse.EnsureSuccessStatusCode();
+            var createdDisease = await DeserializeResponse<DiseaseDTO>(postResponse);
+            var createdId = createdDisease.Id;
 
-            var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
-            var createdDisease = JsonConvert.DeserializeObject<DiseaseDTO>(postCreatedContent);
-            var createdId = createdDisease?.Id;
+            // Act
+            var deleteResponse = await _client.DeleteAsync($"{DiseaseApiUrl}/{createdId}");
 
-            var deleteResponse = await _client.DeleteAsync($"/api/disease/{createdId}");
-
+            // Assert
             Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-            var getResponse = await _client.GetAsync($"/api/disease/{createdId}");
+            // Verify that the disease no longer exists
+            var getResponse = await _client.GetAsync($"{DiseaseApiUrl}/{createdId}");
             Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
         }
 
-        // New Tests for Error Handling
-
-        // Test: Create Disease with Missing Required Fields (400 Bad Request)
         [Fact]
         public async Task PostDisease_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
-            var invalidDisease = new DiseaseDTO
-            {
-                Description = "Missing Name"
-            };
+            // Arrange: Create a new disease with missing name
+            var invalidDisease = new DiseaseCreateDTO { Description = "Missing Name" };
 
-            var content = new StringContent(JsonConvert.SerializeObject(invalidDisease), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("/api/disease", content);
+            // Act
+            var response = await _client.PostAsync(DiseaseApiUrl, CreateContent(invalidDisease));
 
+            // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
-        // Test: Create Disease with Invalid Data Type (400 Bad Request)
         [Fact]
         public async Task PostDisease_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
         {
-            var invalidDisease = new
-            {
-                Name = 12345,  // Invalid data type (should be a string)
-                Description = "Invalid name type"
-            };
+            // Arrange: Provide an integer for the name which should be a string
+            var invalidDisease = new { Name = 12345, Description = "Invalid name type" }; // Invalid data type
 
-            var content = new StringContent(JsonConvert.SerializeObject(invalidDisease), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("/api/disease", content);
+            // Act
+            var response = await _client.PostAsync(DiseaseApiUrl, CreateContent(invalidDisease));
 
+            // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
-        // Test: Get Non-existent Disease (404 Not Found)
+        [Fact]
+        public async Task PutDisease_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
+        {
+            // Arrange: Provide an invalid payload with an integer for the name where a string is expected
+            var invalidDisease = "{ \"name\": 12345 }";  // Invalid JSON for Name (should be a string)
+
+            var content = new StringContent(invalidDisease, System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await _client.PutAsync($"{DiseaseApiUrl}/1", content);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
         [Fact]
         public async Task GetDiseaseById_ReturnsNotFound_WhenDiseaseDoesNotExist()
         {
-            var response = await _client.GetAsync("/api/disease/999");
+            // Act: Try to get a non-existing disease
+            var response = await _client.GetAsync($"{DiseaseApiUrl}/999");
+
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        // Test: Update Non-existent Disease (404 Not Found)
         [Fact]
         public async Task PutDisease_ReturnsNotFound_WhenDiseaseDoesNotExist()
         {
-            var updateDisease = new DiseaseUpdateDTO
-            {
-                Name = "Non-existent Disease",
-                Description = "This disease does not exist"
-            };
+            // Arrange
+            var updateDisease = new DiseaseUpdateDTO { };
 
-            var content = new StringContent(JsonConvert.SerializeObject(updateDisease), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PutAsync("/api/disease/999", content);
+            // Act: Try to update a non-existing disease
+            var response = await _client.PutAsync($"{DiseaseApiUrl}/999", CreateContent(updateDisease));
 
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        // Test: Delete Non-existent Disease (404 Not Found)
         [Fact]
         public async Task DeleteDisease_ReturnsNotFound_WhenDiseaseDoesNotExist()
         {
-            var response = await _client.DeleteAsync("/api/disease/999");
+            // Act: Try to delete a non-existing disease
+            var response = await _client.DeleteAsync($"{DiseaseApiUrl}/999");
+
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetDisease_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.GetAsync($"{DiseaseApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutDisease_ReturnsBadRequest_WithInvalidID()
+        {
+            // Arrange
+            var updateDisease = new DiseaseUpdateDTO { };
+
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.PutAsync($"{DiseaseApiUrl}/invalid-id", CreateContent(updateDisease));
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteDisease_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.DeleteAsync($"{DiseaseApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PostDisease_ReturnsBadRequest_WhenPayloadIsEmpty()
+        {
+            // Arrange: Create an empty payload
+            var emptyPayload = "{}";
+
+            var content = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await _client.PostAsync(DiseaseApiUrl, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Contains("The Name field is required.", responseContent);
+            Assert.Contains("The Description field is required.", responseContent);
+        }
+
+        [Fact]
+        public async Task PutDisease_ReturnsNoContent_WhenPayloadIsEmpty()
+        {
+            // Arrange: Fetch the existing incident with ID = 1 before the update
+            var getResponseBeforeUpdate = await _client.GetAsync($"{DiseaseApiUrl}/1");
+            getResponseBeforeUpdate.EnsureSuccessStatusCode();
+
+            var diseaseBeforeUpdate = await DeserializeResponse<DiseaseDTO>(getResponseBeforeUpdate);
+
+            // Act: Send an empty payload to update the incident
+            var emptyPayload = "{}"; // Empty JSON object
+            var updateContent = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
+
+            var putResponse = await _client.PutAsync($"{DiseaseApiUrl}/1", updateContent);
+
+            // Assert: The response should be 204 No Content
+            Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
+
+            // Act: Fetch the incident again after the update
+            var getResponseAfterUpdate = await _client.GetAsync($"{DiseaseApiUrl}/1");
+            var diseaseAfterUpdate = await DeserializeResponse<DiseaseDTO>(getResponseAfterUpdate);
+
+            // Assert: The incident should remain unchanged
+            Assert.Equal(diseaseBeforeUpdate.Name, diseaseAfterUpdate.Name);
+            Assert.Equal(diseaseBeforeUpdate.Description, diseaseAfterUpdate.Description);
         }
     }
 }

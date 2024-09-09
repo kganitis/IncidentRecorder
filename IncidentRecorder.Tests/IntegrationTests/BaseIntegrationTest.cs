@@ -19,8 +19,7 @@ namespace IncidentRecorder.Tests.Integration
                 builder.ConfigureServices(services =>
                 {
                     // Replace the real database with an in-memory one for testing
-                    var descriptor = services.SingleOrDefault(
-                        d => d.ServiceType == typeof(DbContextOptions<IncidentContext>));
+                    var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<IncidentContext>));
 
                     if (descriptor != null)
                     {
