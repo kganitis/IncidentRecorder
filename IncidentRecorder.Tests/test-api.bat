@@ -689,13 +689,30 @@ curl -X PUT "http://localhost:5168/api/Incident/1" ^
 -H "Accept: application/json" ^
 -H "Content-Type: application/json" ^
 -d "{\"symptomIds\":[999]}"
-
-echo.
-echo.
-
-echo Testing API: Get Incident by ID
 curl -X GET "http://localhost:5168/api/Incident/1" ^
 -H "Accept: application/json"
+
+echo.
+echo.
+echo.
+echo ====== Unique Constraint Testing ======
+echo.
+echo.
+
+echo Testing API: Create Disease with Duplicate Name
+curl -X POST "http://localhost:5168/api/Disease" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"name\":\"COVID-19\",\"description\":\"Disease with duplicate name\"}"
+
+echo.
+echo.
+
+echo Testing API: Update Disease with Duplicate Name
+curl -X PUT "http://localhost:5168/api/Disease/2" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"name\":\"COVID-19\"}"
 
 echo.
 echo.

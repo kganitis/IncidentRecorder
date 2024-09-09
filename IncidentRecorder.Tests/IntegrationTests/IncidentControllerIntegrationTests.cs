@@ -44,9 +44,13 @@ namespace IncidentRecorder.Tests.Integration
         }
 
         [Theory]
-        [InlineData(1, "COVID-19", "John Doe")]
-        [InlineData(6, "Chickenpox", "Liam O'Reilly")]
-        public async Task GetIncidentById_ReturnsOkResult_WhenIncidentExists(int id, string diseaseName, string patientName)
+        [InlineData(1, "COVID-19", "John Doe", "New York, USA", "Cough")]
+        [InlineData(2, "Gastroenteritis", "Alex Smith", "Toronto, Canada", "Nausea")]
+        [InlineData(3, "Malaria", "Maria Gonzalez", "Madrid, Spain", "Chills")]
+        [InlineData(4, "Tuberculosis", "John Doe", "London, UK", "Persistent Cough")]
+        [InlineData(5, "Dengue Fever", "Emma Brown", "Sydney, Australia", "Joint Pain")]
+        [InlineData(6, "Chickenpox", "Liam O'Reilly", "Dublin, Ireland", "Rash")]
+        public async Task GetIncidentById_ReturnsOkResult_WhenIncidentExists(int id, string diseaseName, string patientName, string location, string firstSymptom)
         {
             // Act
             var response = await _client.GetAsync($"{IncidentApiUrl}/{id}");
@@ -58,6 +62,8 @@ namespace IncidentRecorder.Tests.Integration
             Assert.Equal(id, incident.Id);
             Assert.Equal(diseaseName, incident.DiseaseName);
             Assert.Equal(patientName, incident.PatientName);
+            Assert.Equal(location, incident.Location);
+            Assert.Equal(firstSymptom, incident.Symptoms[0]);
         }
 
         [Fact]
@@ -82,6 +88,8 @@ namespace IncidentRecorder.Tests.Integration
             Assert.NotNull(createdIncident);
             Assert.Equal("COVID-19", createdIncident.DiseaseName);
             Assert.Equal("John Doe", createdIncident.PatientName);
+            Assert.Equal("New York, USA", createdIncident.Location);
+            Assert.Equal("Cough", createdIncident.Symptoms[0]);
         }
 
         [Fact]

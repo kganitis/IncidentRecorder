@@ -65,6 +65,12 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<ActionResult<DiseaseDTO>> PostDisease([FromBody] DiseaseCreateDTO diseaseDto)
         {
+            // Check if a disease with the same name already exists
+            if (await _context.Diseases.AnyAsync(d => d.Name == diseaseDto.Name))
+            {
+                return BadRequest("A disease with the same name already exists.");
+            }
+
             var disease = new Disease
             {
                 Name = diseaseDto.Name,
@@ -91,6 +97,12 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PutDisease(int id, [FromBody] DiseaseUpdateDTO diseaseDto)
         {
+            // Check if a disease with the same name already exists
+            if (await _context.Diseases.AnyAsync(d => d.Name == diseaseDto.Name))
+            {
+                return BadRequest("A disease with the same name already exists.");
+            }
+
             var disease = await _context.Diseases.FindAsync(id);
 
             if (disease == null)

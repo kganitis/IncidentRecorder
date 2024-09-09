@@ -47,6 +47,10 @@ namespace IncidentRecorder.Tests.Integration
 
         [Theory]
         [InlineData(1, "COVID-19")]
+        [InlineData(2, "Gastroenteritis")]
+        [InlineData(3, "Malaria")]
+        [InlineData(4, "Tuberculosis")]
+        [InlineData(5, "Dengue Fever")]
         [InlineData(6, "Chickenpox")]
         public async Task GetDiseaseById_ReturnsOkResult_WhenDiseaseExists(int id, string name)
         {
@@ -273,6 +277,39 @@ namespace IncidentRecorder.Tests.Integration
             // Assert: The incident should remain unchanged
             Assert.Equal(diseaseBeforeUpdate.Name, diseaseAfterUpdate.Name);
             Assert.Equal(diseaseBeforeUpdate.Description, diseaseAfterUpdate.Description);
+        }
+
+        [Fact]
+        public async Task PostDisease_ReturnsBadRequest_WhenDiseaseNameIsNotUnique()
+        {
+            // Arrange: Create a disease with an existing name
+            var duplicateDisease = new DiseaseCreateDTO
+            {
+                Name = "COVID-19",  // Name already exists
+                Description = "Disease with duplicate name"
+            };
+
+            // Act: Try to create a duplicate disease
+            var response = await _client.PostAsync(DiseaseApiUrl, CreateContent(duplicateDisease));
+
+            // Assert: BadRequest due to uniqueness violation
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutDisease_ReturnsBadRequest_WhenDiseaseNameIsNotUnique()
+        {
+            // Arrange: Prepare a disease with an existing name
+            var duplicateDisease = new DiseaseUpdateDTO
+            {
+                Name = "COVID-19",  // Name already exists
+            };
+
+            // Act: Try to update a disease with the duplicate name
+            var response = await _client.PutAsync($"{DiseaseApiUrl}/2", CreateContent(duplicateDisease));
+
+            // Assert: BadRequest due to uniqueness violation
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
     }
 }
