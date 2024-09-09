@@ -1,0 +1,304 @@
+I'm developing a basic Backend API for a medical incidents recording application,
+using C#, Entity Framework Core, MVC and SQLite. The API handles basic CRUD operations for all the entities.
+
+The entities are:
+- Disease
+- Patient
+- Location
+- Symptom
+- Incident
+
+Here is the model for each entity:
+```csharp
+public class Disease
+{
+    // All fields are required
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+}
+
+public class Patient
+{
+    // All fields are required
+    public int Id { get; set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public DateTime DateOfBirth { get; set; }
+    public string Gender { get; set; }
+    public string ContactInfo { get; set; }
+}
+
+public class Location
+{
+    // All fields are required
+    public int Id { get; set; }
+    public string City { get; set; }
+    public string Country { get; set; }
+}
+
+public class Symptom
+{
+    // All fields are required
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+}
+
+public class Incident
+{
+    public int Id { get; set; }
+
+    // Disease is required
+    public int DiseaseId { get; set; }
+    public Disease Disease { get; set; }
+
+    // Other fields are optional
+    public int? PatientId { get; set; }
+    public Patient? Patient { get; set; }
+
+    public int? LocationId { get; set; }
+    public Location? Location { get; set; }
+
+    public DateTime DateReported { get; set; } = DateTime.Now;
+
+    public List<Symptom> Symptoms { get; set; } = new List<Symptom>();
+}
+```
+
+Here are the necesary DTOs for the API:
+```csharp
+public class DiseaseDTO
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+}
+
+public class DiseaseCreateDTO
+{
+    public string Name { get; set; }
+    public string Description { get; set; }
+}
+
+public class DiseaseUpdateDTO
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+}
+
+public class LocationDTO
+{
+    public int Id { get; set; }
+    public string City { get; set; }
+    public string Country { get; set; }
+}
+
+public class LocationCreateDTO
+{
+    public string City { get; set; }
+    public string Country { get; set; }
+}
+
+public class LocationUpdateDTO
+{
+    public string? City { get; set; }
+    public string? Country { get; set; }
+}
+
+public class PatientDTO
+{
+    public int Id { get; set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public DateTime DateOfBirth { get; set; }
+    public string Gender { get; set; }
+    public string ContactInfo { get; set; }
+}
+
+public class PatientCreateDTO
+{
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public DateTime DateOfBirth { get; set; }
+    public string Gender { get; set; }
+    public string ContactInfo { get; set; }
+}
+
+public class PatientUpdateDTO
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public DateTime? DateOfBirth { get; set; }
+    public string? Gender { get; set; }
+    public string? ContactInfo { get; set; }
+}
+
+public class SymptomDTO
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+}
+
+public class SymptomCreateDTO
+{
+    public string Name { get; set; }
+    public string Description { get; set; }
+}
+
+public class SymptomUpdateDTO
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+}
+
+public class IncidentReadDTO
+{
+    public int Id { get; set; }
+    public required string DiseaseName { get; set; }
+    public string? PatientName { get; set; }
+    public string? Location { get; set; }
+    public DateTime DateReported { get; set; } = DateTime.Now;
+    public List<string>? Symptoms { get; set; } = new List<string>();
+}
+
+public class IncidentCreateDTO
+{
+    // Disease is required
+    public int DiseaseId { get; set; }
+
+    // Optional fields with validation
+    public int? PatientId { get; set; }
+
+    public int? LocationId { get; set; }
+
+    public DateTime? DateReported { get; set; }
+
+    public List<int> SymptomIds { get; set; } = new List<int>();
+}
+
+public class IncidentUpdateDTO
+{
+    public int? DiseaseId { get; set; }
+    public int? PatientId { get; set; }
+    public int? LocationId { get; set; }
+    public DateTime? DateReported { get; set; }
+    public List<int>? SymptomIds { get; set; }
+}
+
+public class IncidentDetailsDTO
+{
+    public int Id { get; set; }
+    public string DiseaseName { get; set; }
+    public string DiseaseDescription { get; set; }  // More details
+    public string PatientName { get; set; }
+    public DateTime PatientDateOfBirth { get; set; }
+    public string PatientContactInfo { get; set; } // Contact details
+    public string Location { get; set; }
+    public DateTime DateReported { get; set; }
+    public List<string> Symptoms { get; set; }
+}
+
+public class IncidentListDTO
+{
+    public int Id { get; set; }
+    public string DiseaseName { get; set; }
+    public string PatientName { get; set; }
+    public string Location { get; set; }
+    public DateTime DateReported { get; set; }
+}
+
+public class IncidentSummaryDTO
+{
+    public string DiseaseName { get; set; }
+    public string Location { get; set; }
+    public int TotalCases { get; set; }
+    public DateTime LastReported { get; set; }
+}
+```
+
+This is my context:
+```csharp
+using Microsoft.EntityFrameworkCore;
+using IncidentRecorder.Models;
+
+namespace IncidentRecorder.Data
+{
+    public class IncidentContext : DbContext
+    {
+        public IncidentContext(DbContextOptions<IncidentContext> options) : base(options)
+        {
+        }
+
+        // Mark DbSet properties as virtual to allow mocking
+        public virtual DbSet<Patient> Patients { get; set; }
+        public virtual DbSet<Incident> Incidents { get; set; }
+        public virtual DbSet<Location> Locations { get; set; }
+        public virtual DbSet<Disease> Diseases { get; set; }
+        public virtual DbSet<Symptom> Symptoms { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            // Many-to-many relationship between Incident and Symptom
+            modelBuilder.Entity<Incident>()
+                .HasMany(i => i.Symptoms)
+                .WithMany();
+
+            // Disease is required (non-nullable)
+            modelBuilder.Entity<Incident>()
+                .HasOne(i => i.Disease)
+                .WithMany()
+                .HasForeignKey(i => i.DiseaseId)
+                .IsRequired();
+
+            // Patient is optional (nullable)
+            modelBuilder.Entity<Incident>()
+                .HasOne(i => i.Patient)
+                .WithMany()
+                .HasForeignKey(i => i.PatientId)
+                .OnDelete(DeleteBehavior.SetNull);  // Allow nullable foreign key
+
+            // Location is optional (nullable)
+            modelBuilder.Entity<Incident>()
+                .HasOne(i => i.Location)
+                .WithMany()
+                .HasForeignKey(i => i.LocationId)
+                .OnDelete(DeleteBehavior.SetNull);  // Allow nullable foreign key
+        }
+    }
+}
+```
+
+The API should have the following endpoints:
+- GET /api/Disease
+- POST /api/Disease
+- GET /api/Disease/{id}
+- PUT /api/Disease/{id}
+- DELETE /api/Disease/{id}
+
+- GET /api/Location
+- POST /api/Location
+- GET /api/Location/{id}
+- PUT /api/Location/{id}
+- DELETE /api/Location/{id}
+
+- GET /api/Patient
+- POST /api/Patient
+- GET /api/Patient/{id}
+- PUT /api/Patient/{id}
+- DELETE /api/Patient/{id}
+
+- GET /api/Symptom
+- POST /api/Symptom
+- GET /api/Symptom/{id}
+- PUT /api/Symptom/{id}
+- DELETE /api/Symptom/{id}
+
+- GET /api/Incident/all
+- GET /api/Incident/{id}
+- PUT /api/Incident/{id}
+- DELETE /api/Incident/{id}
+- POST /api/Incident/create
+- GET /api/Incident/list
+- GET /api/Incident/details/{id}

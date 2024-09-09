@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using IncidentRecorder.Tests.Integration;
 
-namespace IncidentRecorder.Tests.IntegrationTests
+namespace IncidentRecorder.Tests.Integration
 {
     public class SymptomControllerIntegrationTests : BaseIntegrationTest
     {
@@ -170,5 +170,82 @@ namespace IncidentRecorder.Tests.IntegrationTests
             var getResponse = await _client.GetAsync($"/api/symptom/{createdId}");
             Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
         }
+
+        [Fact]
+        public async Task PostSymptom_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
+        {
+            // Arrange: Missing the required Name field
+            var invalidSymptom = new SymptomCreateDTO
+            {
+                Description = "Feeling of discomfort"
+            };
+
+            var content = new StringContent(JsonConvert.SerializeObject(invalidSymptom), System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await _client.PostAsync("/api/symptom", content);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PostSymptom_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
+        {
+            // Arrange: Providing an invalid type for Name (e.g., an integer instead of a string)
+            var invalidSymptom = new
+            {
+                Name = 12345,  // Invalid data type
+                Description = "Feeling of discomfort"
+            };
+
+            var content = new StringContent(JsonConvert.SerializeObject(invalidSymptom), System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await _client.PostAsync("/api/symptom", content);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetSymptomById_ReturnsNotFound_WhenSymptomDoesNotExist()
+        {
+            // Act: Try to get a symptom with a non-existent ID
+            var response = await _client.GetAsync("/api/symptom/999");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutSymptom_ReturnsNotFound_WhenSymptomDoesNotExist()
+        {
+            // Arrange: Prepare update data for a non-existent symptom
+            var updateSymptom = new SymptomUpdateDTO
+            {
+                Name = "Non-existent Symptom",
+                Description = "This symptom does not exist"
+            };
+
+            var content = new StringContent(JsonConvert.SerializeObject(updateSymptom), System.Text.Encoding.UTF8, "application/json");
+
+            // Act: Try to update a non-existent symptom
+            var response = await _client.PutAsync("/api/symptom/999", content);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteSymptom_ReturnsNotFound_WhenSymptomDoesNotExist()
+        {
+            // Act: Try to delete a non-existent symptom
+            var response = await _client.DeleteAsync("/api/symptom/999");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
     }
 }

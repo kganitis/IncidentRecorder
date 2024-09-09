@@ -54,17 +54,17 @@ namespace IncidentRecorder.Tests.Unit
             var context = GetInMemoryDbContext("TestDb4");
             var controller = new DiseaseController(context);
 
-            var newDisease = new DiseaseDTO
+            var newDisease = new DiseaseCreateDTO
             {
-                Name = "COVID-19",
-                Description = "Coronavirus disease"
+                Name = "Flu",
+                Description = "Seasonal flu virus"
             };
 
             var result = await controller.PostDisease(newDisease);
 
             var actionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
             var createdDisease = Assert.IsType<DiseaseDTO>(actionResult.Value);
-            Assert.Equal("COVID-19", createdDisease.Name);
+            Assert.Equal("Flu", createdDisease.Name);
         }
 
         // Test: Update an existing disease

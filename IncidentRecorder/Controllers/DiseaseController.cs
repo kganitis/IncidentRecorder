@@ -3,6 +3,7 @@ using IncidentRecorder.Data;
 using IncidentRecorder.Models;
 using IncidentRecorder.DTOs.Disease;
 using Microsoft.EntityFrameworkCore;
+using IncidentRecorder.DTOs.Symptom;
 
 namespace IncidentRecorder.Controllers
 {
@@ -62,7 +63,7 @@ namespace IncidentRecorder.Controllers
         // Create a new disease
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
-        public async Task<ActionResult<DiseaseDTO>> PostDisease([FromBody] DiseaseDTO diseaseDto)
+        public async Task<ActionResult<DiseaseDTO>> PostDisease([FromBody] DiseaseCreateDTO diseaseDto)
         {
             var disease = new Disease
             {
@@ -73,9 +74,15 @@ namespace IncidentRecorder.Controllers
             _context.Diseases.Add(disease);
             await _context.SaveChangesAsync();
 
-            diseaseDto.Id = disease.Id;  // Set the new ID for the response
+            // Map to DTO for response
+            var createdDiseaseDto = new DiseaseDTO
+            {
+                Id = disease.Id,
+                Name = disease.Name,
+                Description = disease.Description
+            };
 
-            return CreatedAtAction(nameof(GetDisease), new { id = diseaseDto.Id }, diseaseDto);
+            return CreatedAtAction(nameof(GetDisease), new { id = disease.Id }, createdDiseaseDto);
         }
 
         // Update an existing disease

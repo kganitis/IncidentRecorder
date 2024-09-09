@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using IncidentRecorder.Tests.Integration;
 
-namespace IncidentRecorder.Tests.IntegrationTests
+namespace IncidentRecorder.Tests.Integration
 {
     public class PatientControllerIntegrationTests : BaseIntegrationTest
     {
@@ -14,17 +14,14 @@ namespace IncidentRecorder.Tests.IntegrationTests
         [Fact]
         public async Task GetPatients_ReturnsOkResult_WithSeededData()
         {
-            // Act
             var response = await _client.GetAsync("/api/patient");
 
-            // Assert
             response.EnsureSuccessStatusCode();
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             var content = await response.Content.ReadAsStringAsync();
             var patients = JsonConvert.DeserializeObject<List<PatientDTO>>(content);
 
-            // Verify the seeded patient is returned (if patient data was seeded)
             Assert.NotNull(patients);
             Assert.Contains(patients, p => p.FirstName == "John" && p.LastName == "Doe" && p.Gender == "Male");
         }
@@ -33,7 +30,6 @@ namespace IncidentRecorder.Tests.IntegrationTests
         [Fact]
         public async Task GetPatientById_ReturnsOkResult_WhenPatientExists()
         {
-            // Arrange: Create a new patient to get its ID
             var newPatient = new PatientCreateDTO
             {
                 FirstName = "Jane",
@@ -44,24 +40,20 @@ namespace IncidentRecorder.Tests.IntegrationTests
             };
 
             var content = new StringContent(JsonConvert.SerializeObject(newPatient), System.Text.Encoding.UTF8, "application/json");
-
             var postResponse = await _client.PostAsync("/api/patient", content);
             postResponse.EnsureSuccessStatusCode();
             var createdContent = await postResponse.Content.ReadAsStringAsync();
             var createdPatient = JsonConvert.DeserializeObject<PatientDTO>(createdContent);
             var createdId = createdPatient.Id;
 
-            // Act: Fetch the patient by the captured ID
             var getResponse = await _client.GetAsync($"/api/patient/{createdId}");
 
-            // Assert
             getResponse.EnsureSuccessStatusCode();
             Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
             var getContent = await getResponse.Content.ReadAsStringAsync();
             var patient = JsonConvert.DeserializeObject<PatientDTO>(getContent);
 
-            // Verify the patient details
             Assert.NotNull(patient);
             Assert.Equal(createdId, patient.Id);
             Assert.Equal("Jane", patient.FirstName);
@@ -73,7 +65,6 @@ namespace IncidentRecorder.Tests.IntegrationTests
         [Fact]
         public async Task PostPatient_CreatesNewPatient()
         {
-            // Arrange
             var newPatient = new PatientCreateDTO
             {
                 FirstName = "Mark",
@@ -84,15 +75,11 @@ namespace IncidentRecorder.Tests.IntegrationTests
             };
 
             var content = new StringContent(JsonConvert.SerializeObject(newPatient), System.Text.Encoding.UTF8, "application/json");
-
-            // Act
             var response = await _client.PostAsync("/api/patient", content);
 
-            // Assert
             response.EnsureSuccessStatusCode();
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-            // Deserialize the created patient to verify the content
             var responseContent = await response.Content.ReadAsStringAsync();
             var createdPatient = JsonConvert.DeserializeObject<PatientDTO>(responseContent);
 
@@ -106,7 +93,6 @@ namespace IncidentRecorder.Tests.IntegrationTests
         [Fact]
         public async Task PutPatient_UpdatesExistingPatient()
         {
-            // Arrange: Create a new patient to get its ID
             var newPatient = new PatientCreateDTO
             {
                 FirstName = "Alice",
@@ -124,7 +110,6 @@ namespace IncidentRecorder.Tests.IntegrationTests
             var createdPatient = JsonConvert.DeserializeObject<PatientDTO>(postCreatedContent);
             var createdId = createdPatient.Id;
 
-            // Arrange: Prepare update data
             var updatedPatient = new PatientUpdateDTO
             {
                 FirstName = "Alicia",
@@ -135,13 +120,10 @@ namespace IncidentRecorder.Tests.IntegrationTests
 
             var updateContent = new StringContent(JsonConvert.SerializeObject(updatedPatient), System.Text.Encoding.UTF8, "application/json");
 
-            // Act: Update the patient
             var putResponse = await _client.PutAsync($"/api/patient/{createdId}", updateContent);
 
-            // Assert
             Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
-            // Verify that the patient was updated by fetching it again
             var getResponse = await _client.GetAsync($"/api/patient/{createdId}");
             var getContent = await getResponse.Content.ReadAsStringAsync();
             var updatedPatientResult = JsonConvert.DeserializeObject<PatientDTO>(getContent);
@@ -155,7 +137,6 @@ namespace IncidentRecorder.Tests.IntegrationTests
         [Fact]
         public async Task DeletePatient_DeletesExistingPatient()
         {
-            // Arrange: Create a new patient to get its ID
             var newPatient = new PatientCreateDTO
             {
                 FirstName = "Chris",
@@ -173,15 +154,63 @@ namespace IncidentRecorder.Tests.IntegrationTests
             var createdPatient = JsonConvert.DeserializeObject<PatientDTO>(postCreatedContent);
             var createdId = createdPatient.Id;
 
-            // Act: Delete the patient
             var deleteResponse = await _client.DeleteAsync($"/api/patient/{createdId}");
 
-            // Assert
             Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-            // Verify that the patient no longer exists
             var getResponse = await _client.GetAsync($"/api/patient/{createdId}");
             Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+        }
+
+        // Test: Create Patient with Missing Required Fields (400 Bad Request)
+        [Fact]
+        public async Task PostPatient_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
+        {
+            var invalidPatient = new PatientCreateDTO
+            {
+                DateOfBirth = new System.DateTime(1990, 5, 15),
+                Gender = "Female",
+                ContactInfo = "jane.doe@example.com"
+            };
+
+            var content = new StringContent(JsonConvert.SerializeObject(invalidPatient), System.Text.Encoding.UTF8, "application/json");
+            var response = await _client.PostAsync("/api/patient", content);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        // Test: Get Non-existent Patient (404 Not Found)
+        [Fact]
+        public async Task GetPatientById_ReturnsNotFound_WhenPatientDoesNotExist()
+        {
+            var response = await _client.GetAsync("/api/patient/999");
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        // Test: Update Non-existent Patient (404 Not Found)
+        [Fact]
+        public async Task PutPatient_ReturnsNotFound_WhenPatientDoesNotExist()
+        {
+            var updatePatient = new PatientUpdateDTO
+            {
+                FirstName = "Non-existent",
+                LastName = "Patient",
+                Gender = "Female",
+                ContactInfo = "non.existent@example.com"
+            };
+
+            var content = new StringContent(JsonConvert.SerializeObject(updatePatient), System.Text.Encoding.UTF8, "application/json");
+            var response = await _client.PutAsync("/api/patient/999", content);
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        // Test: Delete Non-existent Patient (404 Not Found)
+        [Fact]
+        public async Task DeletePatient_ReturnsNotFound_WhenPatientDoesNotExist()
+        {
+            var response = await _client.DeleteAsync("/api/patient/999");
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
     }
 }

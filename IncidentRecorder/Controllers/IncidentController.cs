@@ -74,30 +74,30 @@ namespace IncidentRecorder.Controllers
 
         // Create a new incident
         [HttpPost("create")]
-        public async Task<ActionResult<IncidentReadDTO>> PostIncident([FromBody] IncidentCreateDTO incidentDto)
+        public async Task<ActionResult<IncidentReadDTO>> PostIncident([FromBody] IncidentCreateDTO incidentCreateDto)
         {
             // Validate DiseaseId
-            if (incidentDto.DiseaseId == 0 || !await _context.Diseases.AnyAsync(d => d.Id == incidentDto.DiseaseId))
+            if (incidentCreateDto.DiseaseId == 0 || !await _context.Diseases.AnyAsync(d => d.Id == incidentCreateDto.DiseaseId))
             {
                 return BadRequest("DiseaseId is required and must exist.");
             }
 
             // Validate optional foreign keys (PatientId, LocationId)
-            if (incidentDto.PatientId.HasValue && !await _context.Patients.AnyAsync(p => p.Id == incidentDto.PatientId.Value))
+            if (incidentCreateDto.PatientId.HasValue && !await _context.Patients.AnyAsync(p => p.Id == incidentCreateDto.PatientId.Value))
             {
                 return BadRequest("Invalid PatientId.");
             }
 
-            if (incidentDto.LocationId.HasValue && !await _context.Locations.AnyAsync(l => l.Id == incidentDto.LocationId.Value))
+            if (incidentCreateDto.LocationId.HasValue && !await _context.Locations.AnyAsync(l => l.Id == incidentCreateDto.LocationId.Value))
             {
                 return BadRequest("Invalid LocationId.");
             }
 
             // Validate SymptomIds
-            if (incidentDto.SymptomIds != null && incidentDto.SymptomIds.Any())
+            if (incidentCreateDto.SymptomIds != null && incidentCreateDto.SymptomIds.Any())
             {
                 var validSymptomIds = await _context.Symptoms.Select(s => s.Id).ToListAsync();
-                var invalidSymptomIds = incidentDto.SymptomIds.Except(validSymptomIds).ToList();
+                var invalidSymptomIds = incidentCreateDto.SymptomIds.Except(validSymptomIds).ToList();
 
                 if (invalidSymptomIds.Any())
                 {
@@ -108,19 +108,19 @@ namespace IncidentRecorder.Controllers
             // Create the incident
             var incident = new Incident
             {
-                DiseaseId = incidentDto.DiseaseId,
-                PatientId = incidentDto.PatientId,
-                LocationId = incidentDto.LocationId,
-                DateReported = incidentDto.DateReported ?? DateTime.Now,
-                Symptoms = incidentDto.SymptomIds != null && incidentDto.SymptomIds.Any()
-                    ? await _context.Symptoms.Where(s => incidentDto.SymptomIds.Contains(s.Id)).ToListAsync()
+                DiseaseId = incidentCreateDto.DiseaseId,
+                PatientId = incidentCreateDto.PatientId,
+                LocationId = incidentCreateDto.LocationId,
+                DateReported = incidentCreateDto.DateReported ?? DateTime.Now,
+                Symptoms = incidentCreateDto.SymptomIds != null && incidentCreateDto.SymptomIds.Any()
+                    ? await _context.Symptoms.Where(s => incidentCreateDto.SymptomIds.Contains(s.Id)).ToListAsync()
                     : new List<Symptom>()
             };
 
             _context.Incidents.Add(incident);
             await _context.SaveChangesAsync();
 
-            // Map the created incident to the DTO
+            // Map the created incident to a Read DTO
             var incidentReadDto = new IncidentReadDTO
             {
                 Id = incident.Id,
@@ -138,13 +138,35 @@ namespace IncidentRecorder.Controllers
             return CreatedAtAction(nameof(GetIncident), new { id = incident.Id }, incidentReadDto);
         }
 
-
-        // Update an incident
+        // Update incident
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutIncident(int id, [FromBody] IncidentUpdateDTO incidentDto)
+        public async Task<IActionResult> PutIncident(int id, [FromBody] IncidentUpdateDTO incidentUpdateDto)
         {
+            // Validate foreign keys exist
+            if (incidentUpdateDto.DiseaseId.HasValue && !await _context.Diseases.AnyAsync(d => d.Id == incidentUpdateDto.DiseaseId))
+            {
+                return BadRequest("Invalid DiseaseId.");
+            }
+            if (incidentUpdateDto.PatientId.HasValue && !await _context.Patients.AnyAsync(p => p.Id == incidentUpdateDto.PatientId.Value))
+            {
+                return BadRequest("Invalid PatientId.");
+            }
+            if (incidentUpdateDto.LocationId.HasValue && !await _context.Locations.AnyAsync(l => l.Id == incidentUpdateDto.LocationId.Value))
+            {
+                return BadRequest("Invalid LocationId.");
+            }
+            if (incidentUpdateDto.SymptomIds?.Any() == true)
+            {
+                var invalidSymptomIds = incidentUpdateDto.SymptomIds.Except(await _context.Symptoms.Select(s => s.Id).ToListAsync()).ToList();
+                if (invalidSymptomIds.Any())
+                {
+                    return BadRequest($"Invalid SymptomIds: {string.Join(", ", invalidSymptomIds)}");
+                }
+            }
+
+            // Find the incident
             var incident = await _context.Incidents
-                .Include(i => i.Symptoms) // Ensure symptoms are loaded to modify them
+                .Include(i => i.Symptoms)
                 .FirstOrDefaultAsync(i => i.Id == id);
 
             if (incident == null)
@@ -152,32 +174,17 @@ namespace IncidentRecorder.Controllers
                 return NotFound();
             }
 
-            // Update fields only if they are present in the DTO
-            if (incidentDto.DiseaseId.HasValue)
-            {
-                incident.DiseaseId = incidentDto.DiseaseId.Value;
-            }
-
-            if (incidentDto.PatientId.HasValue)
-            {
-                incident.PatientId = incidentDto.PatientId.Value;
-            }
-
-            if (incidentDto.LocationId.HasValue)
-            {
-                incident.LocationId = incidentDto.LocationId.Value;
-            }
-
-            if (incidentDto.DateReported.HasValue)
-            {
-                incident.DateReported = incidentDto.DateReported.Value;
-            }
+            // Update fields from DTO
+            incident.DiseaseId = incidentUpdateDto.DiseaseId ?? incident.DiseaseId;
+            incident.PatientId = incidentUpdateDto.PatientId ?? incident.PatientId;
+            incident.LocationId = incidentUpdateDto.LocationId ?? incident.LocationId;
+            incident.DateReported = incidentUpdateDto.DateReported ?? incident.DateReported;
 
             // Update symptoms if provided
-            if (incidentDto.SymptomIds != null)
+            if (incidentUpdateDto.SymptomIds != null)
             {
                 incident.Symptoms = await _context.Symptoms
-                    .Where(s => incidentDto.SymptomIds.Contains(s.Id))
+                    .Where(s => incidentUpdateDto.SymptomIds.Contains(s.Id))
                     .ToListAsync();
             }
 
@@ -193,10 +200,7 @@ namespace IncidentRecorder.Controllers
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();

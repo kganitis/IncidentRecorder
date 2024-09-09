@@ -1,12 +1,17 @@
-﻿public class IncidentCreateDTO
+﻿namespace IncidentRecorder.DTOs.Incident
 {
-    // Disease is required
-    public int DiseaseId { get; set; }
+    public class IncidentCreateDTO
+    {
+        // Disease is required
+        public int DiseaseId { get; set; }
 
-    // Optional fields
-    public int? PatientId { get; set; }  // Nullable
-    public int? LocationId { get; set; }  // Nullable
-    public DateTime? DateReported { get; set; }  // Nullable
+        // Optional fields with validation
+        public int? PatientId { get; set; }
 
-    public List<int> SymptomIds { get; set; } = new List<int>();  // Optional, default to an empty list
+        public int? LocationId { get; set; }
+
+        public DateTime? DateReported { get; set; }
+
+        public List<int> SymptomIds { get; set; } = new List<int>();
+    }
 }
