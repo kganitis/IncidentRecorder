@@ -157,7 +157,7 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PutDisease_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
         {
             // Arrange: Provide an invalid payload with an integer for the name where a string is expected
-            var invalidDisease = "{ \"name\": 12345 }";  // Invalid JSON for Name (should be a string)
+            var invalidDisease = "{ \"name\": 12345, \"description\": \"Invalid name type\" }";
 
             var content = new StringContent(invalidDisease, System.Text.Encoding.UTF8, "application/json");
 

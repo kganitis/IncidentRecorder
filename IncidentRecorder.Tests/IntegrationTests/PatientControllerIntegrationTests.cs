@@ -1,216 +1,407 @@
 ﻿using System.Net;
 using IncidentRecorder.DTOs.Patient;
-using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using IncidentRecorder.Tests.Integration;
 
 namespace IncidentRecorder.Tests.Integration
 {
     public class PatientControllerIntegrationTests : BaseIntegrationTest
     {
+        private const string PatientApiUrl = "/api/patient";
+
         public PatientControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
 
-        // Test: Get all patients with seeded data
         [Fact]
         public async Task GetPatients_ReturnsOkResult_WithSeededData()
         {
-            var response = await _client.GetAsync("/api/patient");
+            // Act
+            var response = await _client.GetAsync(PatientApiUrl);
 
+            // Assert
             response.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            var content = await response.Content.ReadAsStringAsync();
-            var patients = JsonConvert.DeserializeObject<List<PatientDTO>>(content);
-
+            var patients = await DeserializeResponse<List<PatientDTO>>(response);
             Assert.NotNull(patients);
-            Assert.Contains(patients, p => p.FirstName == "John" && p.LastName == "Doe" && p.Gender == "Male");
-        }
 
-        // Test: Get a single patient by dynamically capturing ID after creation
-        [Fact]
-        public async Task GetPatientById_ReturnsOkResult_WhenPatientExists()
-        {
-            var newPatient = new PatientCreateDTO
+            var expectedPatients = new[]
             {
-                FirstName = "Jane",
-                LastName = "Doe",
-                DateOfBirth = new System.DateTime(1990, 5, 15),
-                Gender = "Female",
-                ContactInfo = "jane.doe@example.com"
+                new { Id = 1, NIN = "000000001", Name = "John Doe", ContactInfo = "john.doe@example.com" },
+                // TODO check for all the patients
+                new { Id = 6, NIN = "000000006", Name = "Liam O'Reilly", ContactInfo = "liam.oreilly@medservice.com" }
             };
 
-            var content = new StringContent(JsonConvert.SerializeObject(newPatient), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/patient", content);
-            postResponse.EnsureSuccessStatusCode();
-            var createdContent = await postResponse.Content.ReadAsStringAsync();
-            var createdPatient = JsonConvert.DeserializeObject<PatientDTO>(createdContent);
-            var createdId = createdPatient.Id;
-
-            var getResponse = await _client.GetAsync($"/api/patient/{createdId}");
-
-            getResponse.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-
-            var getContent = await getResponse.Content.ReadAsStringAsync();
-            var patient = JsonConvert.DeserializeObject<PatientDTO>(getContent);
-
-            Assert.NotNull(patient);
-            Assert.Equal(createdId, patient.Id);
-            Assert.Equal("Jane", patient.FirstName);
-            Assert.Equal("Doe", patient.LastName);
-            Assert.Equal("Female", patient.Gender);
+            foreach (var expected in expectedPatients)
+            {
+                Assert.Contains(patients, i => i.Id == expected.Id && $"{i.FirstName} {i.LastName}" == expected.Name && i.ContactInfo == expected.ContactInfo);
+            }
         }
 
-        // Test: Post a new patient and verify creation
+        [Theory]
+        [InlineData(1, "000000001", "John Doe", "john.doe@example.com")]
+        [InlineData(2, "000000002", "Alex Smith", "alex.smith@healthmail.com")]
+        [InlineData(3, "000000003", "Maria Gonzalez", "maria.gonzalez@medmail.com")]
+        [InlineData(4, "000000004", "John Doe", "john.doe@medemail.com")]
+        [InlineData(5, "000000005", "Emma Brown", "emma.brown@health.com")]
+        [InlineData(6, "000000006", "Liam O'Reilly", "liam.oreilly@medservice.com")]
+        public async Task GetPatientById_ReturnsOkResult_WhenPatientExists(int id, string nin, string name, string contactInfo)
+        {
+            // Act
+            var response = await _client.GetAsync($"{PatientApiUrl}/{id}");
+
+            // Assert
+            var patient = await DeserializeResponse<PatientDTO>(response);
+            Assert.NotNull(patient);
+            Assert.Equal(id, patient.Id);
+            Assert.Equal(nin, patient.NIN);
+            Assert.Equal(name, $"{patient.FirstName} {patient.LastName}");
+            Assert.Equal(contactInfo, patient.ContactInfo);
+        }
+
         [Fact]
         public async Task PostPatient_CreatesNewPatient()
         {
+            // Arrange: Prepare new patient data
             var newPatient = new PatientCreateDTO
             {
-                FirstName = "Mark",
-                LastName = "Smith",
-                DateOfBirth = new System.DateTime(1985, 7, 20),
+                NIN = "000000007",
+                FirstName = "George",
+                LastName = "Washington",
+                DateOfBirth = new DateTime(1732, 2, 22),
                 Gender = "Male",
-                ContactInfo = "mark.smith@example.com"
+                ContactInfo = "potus@usa.gov"
             };
 
-            var content = new StringContent(JsonConvert.SerializeObject(newPatient), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("/api/patient", content);
+            // Act
+            var response = await _client.PostAsync(PatientApiUrl, CreateContent(newPatient));
 
+            // Assert
             response.EnsureSuccessStatusCode();
+            var createdPatient = await DeserializeResponse<PatientDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var createdPatient = JsonConvert.DeserializeObject<PatientDTO>(responseContent);
-
             Assert.NotNull(createdPatient);
-            Assert.Equal("Mark", createdPatient.FirstName);
-            Assert.Equal("Smith", createdPatient.LastName);
+            Assert.Equal("000000007", createdPatient.NIN);
+            Assert.Equal("George", createdPatient.FirstName);
+            Assert.Equal("Washington", createdPatient.LastName);
+            Assert.Equal(new DateTime(1732, 2, 22), createdPatient.DateOfBirth);
             Assert.Equal("Male", createdPatient.Gender);
+            Assert.Equal("potus@usa.gov", createdPatient.ContactInfo);
         }
 
-        // Test: Update an existing patient
         [Fact]
         public async Task PutPatient_UpdatesExistingPatient()
         {
+            // Arrange: Create a new patient to update
             var newPatient = new PatientCreateDTO
             {
-                FirstName = "Alice",
-                LastName = "Brown",
-                DateOfBirth = new System.DateTime(1995, 3, 22),
-                Gender = "Female",
-                ContactInfo = "alice.brown@example.com"
+                NIN = "000000008",
+                FirstName = "Test FirstName",
+                LastName = "Test LastName",
+                DateOfBirth = new DateTime(1990, 1, 1),
+                Gender = "Male",
+                ContactInfo = "test@mail.com"
             };
 
-            var postContent = new StringContent(JsonConvert.SerializeObject(newPatient), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/patient", postContent);
+            // Get the ID of the newly created patient
+            var postResponse = await _client.PostAsync(PatientApiUrl, CreateContent(newPatient));
             postResponse.EnsureSuccessStatusCode();
-
-            var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
-            var createdPatient = JsonConvert.DeserializeObject<PatientDTO>(postCreatedContent);
+            var createdPatient = await DeserializeResponse<PatientDTO>(postResponse);
             var createdId = createdPatient.Id;
 
+            // Arrange: Prepare updated patient data
             var updatedPatient = new PatientUpdateDTO
             {
-                FirstName = "Alicia",
-                LastName = "Brown",
+                FirstName = "Updated FirstName",
+                LastName = "Updated LastName",
+                DateOfBirth = new DateTime(1992, 1, 1),
                 Gender = "Female",
-                ContactInfo = "alicia.brown@example.com"
+                ContactInfo = "updated@mail.com"
             };
 
-            var updateContent = new StringContent(JsonConvert.SerializeObject(updatedPatient), System.Text.Encoding.UTF8, "application/json");
+            // Act
+            var putResponse = await _client.PutAsync($"{PatientApiUrl}/{createdId}", CreateContent(updatedPatient));
 
-            var putResponse = await _client.PutAsync($"/api/patient/{createdId}", updateContent);
-
+            // Assert
             Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
-            var getResponse = await _client.GetAsync($"/api/patient/{createdId}");
-            var getContent = await getResponse.Content.ReadAsStringAsync();
-            var updatedPatientResult = JsonConvert.DeserializeObject<PatientDTO>(getContent);
+            // Verify that the patient was updated by fetching it again
+            var getResponse = await _client.GetAsync($"{PatientApiUrl}/{createdId}");
+            var updatedPatientResult = await DeserializeResponse<PatientDTO>(getResponse);
 
             Assert.NotNull(updatedPatientResult);
-            Assert.Equal("Alicia", updatedPatientResult.FirstName);
-            Assert.Equal("alicia.brown@example.com", updatedPatientResult.ContactInfo);
+            Assert.Equal("Updated FirstName", updatedPatientResult.FirstName);
+            Assert.Equal("Updated LastName", updatedPatientResult.LastName);
+            Assert.Equal(new DateTime(1992, 1, 1), updatedPatientResult.DateOfBirth);
+            Assert.Equal("Female", updatedPatientResult.Gender);
+            Assert.Equal("updated@mail.com", updatedPatientResult.ContactInfo);
+
+            // Delete the updated patient to clean up
+            var deleteResponse = await _client.DeleteAsync($"{PatientApiUrl}/{createdId}");
+            deleteResponse.EnsureSuccessStatusCode();
         }
 
-        // Test: Delete an existing patient
         [Fact]
         public async Task DeletePatient_DeletesExistingPatient()
         {
+            // Arrange: Create a new patient to delete
             var newPatient = new PatientCreateDTO
             {
-                FirstName = "Chris",
-                LastName = "Evans",
-                DateOfBirth = new System.DateTime(1980, 6, 13),
+                NIN = "000000009",
+                FirstName = "Test FirstName",
+                LastName = "Test LastName",
+                DateOfBirth = new DateTime(1990, 1, 1),
                 Gender = "Male",
-                ContactInfo = "chris.evans@example.com"
+                ContactInfo = "test@mail.com"
             };
 
-            var postContent = new StringContent(JsonConvert.SerializeObject(newPatient), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/patient", postContent);
+            // Get the ID of the newly created patient
+            var postResponse = await _client.PostAsync(PatientApiUrl, CreateContent(newPatient));
             postResponse.EnsureSuccessStatusCode();
-
-            var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
-            var createdPatient = JsonConvert.DeserializeObject<PatientDTO>(postCreatedContent);
+            var createdPatient = await DeserializeResponse<PatientDTO>(postResponse);
             var createdId = createdPatient.Id;
 
-            var deleteResponse = await _client.DeleteAsync($"/api/patient/{createdId}");
+            // Act
+            var deleteResponse = await _client.DeleteAsync($"{PatientApiUrl}/{createdId}");
 
+            // Assert
             Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-            var getResponse = await _client.GetAsync($"/api/patient/{createdId}");
+            // Verify that the patient no longer exists
+            var getResponse = await _client.GetAsync($"{PatientApiUrl}/{createdId}");
             Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
         }
 
-        // Test: Create Patient with Missing Required Fields (400 Bad Request)
         [Fact]
         public async Task PostPatient_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
-            var invalidPatient = new PatientCreateDTO
-            {
-                DateOfBirth = new System.DateTime(1990, 5, 15),
-                Gender = "Female",
-                ContactInfo = "jane.doe@example.com"
-            };
+            // Arrange: Create new patient with missing fields
+            var invalidPatient = new PatientCreateDTO { NIN = "000000010" };
 
-            var content = new StringContent(JsonConvert.SerializeObject(invalidPatient), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("/api/patient", content);
+            // Act
+            var response = await _client.PostAsync(PatientApiUrl, CreateContent(invalidPatient));
 
+            // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
-        // Test: Get Non-existent Patient (404 Not Found)
+        [Fact]
+        public async Task PostPatient_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
+        {
+            // Arrange: Provide an integer where a string is expected
+            var invalidPatient1 = new
+            {
+                NIN = 000000010,  // Invalid data type
+                FirstName = "Test FirstName",
+                LastName = "Test LastName",
+                DateOfBirth = new DateTime(1990, 1, 1),
+                Gender = "Male",
+                ContactInfo = "test1@mail.com"
+            };
+
+            // Arrange: Provide an invalid date time format
+            var invalidPatient2 = new
+            {
+                NIN = "000000010",
+                FirstName = "Test FirstName",
+                LastName = "Test LastName",
+                DateOfBirth = "01/01/2000",  // Invalid date time format
+                Gender = "Female",
+                ContactInfo = "test2@mail.com"
+            };
+
+            // Act
+            var response1 = await _client.PostAsync(PatientApiUrl, CreateContent(invalidPatient1));
+            var response2 = await _client.PostAsync(PatientApiUrl, CreateContent(invalidPatient2));
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response1.StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutPatient_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
+        {
+            // Arrange: Provide an invalid payload with an integer where a string is expected
+            var invalidPatient1 =
+                "{" +
+                "\"nin\": 000000010," +  // Invalid data type
+                "\"firstName\": \"Kostas\"," +
+                "\"lastName\": \"Ganitis\"," +
+                "\"dateOfBirth\": \"1992-02-16T18:00:00Z\"," +
+                "\"gender\": \"Male\"," +
+                "\"contactInfo\": \"k.ganitis@unipi.gr\"" +
+                "}";
+
+            // Arrange: Provide an invalid payload with an invalid date time format
+            var invalidPatient2 =
+                "{" +
+                "\"nin\": 000000010," +
+                "\"firstName\": \"Kostas\"," +
+                "\"lastName\": \"Ganitis\"," +
+                "\"dateOfBirth\": \"16/02/1992\"," +  // Invalid date time format
+                "\"gender\": \"Male\"," +
+                "\"contactInfo\": \"k.ganitis@unipi.gr\"" +
+                "}";
+
+            var content1 = new StringContent(invalidPatient1, System.Text.Encoding.UTF8, "application/json");
+            var content2 = new StringContent(invalidPatient2, System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response1 = await _client.PutAsync($"{PatientApiUrl}/1", content1);
+            var response2 = await _client.PutAsync($"{PatientApiUrl}/1", content2);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response1.StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
+        }
+
         [Fact]
         public async Task GetPatientById_ReturnsNotFound_WhenPatientDoesNotExist()
         {
-            var response = await _client.GetAsync("/api/patient/999");
+            // Act: Try to get a non-existing patient
+            var response = await _client.GetAsync($"{PatientApiUrl}/999");
+
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        // Test: Update Non-existent Patient (404 Not Found)
         [Fact]
         public async Task PutPatient_ReturnsNotFound_WhenPatientDoesNotExist()
         {
-            var updatePatient = new PatientUpdateDTO
-            {
-                FirstName = "Non-existent",
-                LastName = "Patient",
-                Gender = "Female",
-                ContactInfo = "non.existent@example.com"
-            };
+            // Arrange
+            var updatePatient = new PatientUpdateDTO { };
 
-            var content = new StringContent(JsonConvert.SerializeObject(updatePatient), System.Text.Encoding.UTF8, "application/json");
-            var response = await _client.PutAsync("/api/patient/999", content);
+            // Act: Try to update a non-existing patient
+            var response = await _client.PutAsync($"{PatientApiUrl}/999", CreateContent(updatePatient));
 
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        // Test: Delete Non-existent Patient (404 Not Found)
         [Fact]
         public async Task DeletePatient_ReturnsNotFound_WhenPatientDoesNotExist()
         {
-            var response = await _client.DeleteAsync("/api/patient/999");
+            // Act: Try to delete a non-existing patient
+            var response = await _client.DeleteAsync($"{PatientApiUrl}/999");
+
+            // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetPatient_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.GetAsync($"{PatientApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutPatient_ReturnsBadRequest_WithInvalidID()
+        {
+            // Arrange
+            var updatePatient = new PatientUpdateDTO { };
+
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.PutAsync($"{PatientApiUrl}/invalid-id", CreateContent(updatePatient));
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeletePatient_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.DeleteAsync($"{PatientApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PostPatient_ReturnsBadRequest_WhenPayloadIsEmpty()
+        {
+            // Arrange: Create an empty payload
+            var emptyPayload = "{}";
+
+            var content = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await _client.PostAsync(PatientApiUrl, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Contains("The NIN field is required.", responseContent);
+            Assert.Contains("The FirstName field is required.", responseContent);
+            Assert.Contains("The LastName field is required.", responseContent);
+            Assert.Contains("The Gender field is required.", responseContent);
+            Assert.Contains("The ContactInfo field is required.", responseContent);
+        }
+
+        [Fact]
+        public async Task PutPatient_ReturnsNoContent_WhenPayloadIsEmpty()
+        {
+            // Arrange: Fetch an existing patient
+            var getResponseBeforeUpdate = await _client.GetAsync($"{PatientApiUrl}/1");
+            getResponseBeforeUpdate.EnsureSuccessStatusCode();
+
+            var patientBeforeUpdate = await DeserializeResponse<PatientDTO>(getResponseBeforeUpdate);
+
+            // Act: Send an empty payload to update the patient
+            var emptyPayload = "{}"; // Empty JSON object
+            var updateContent = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
+
+            var putResponse = await _client.PutAsync($"{PatientApiUrl}/1", updateContent);
+
+            // Assert: The response should be 204 No Content
+            Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
+
+            // Act: Fetch the patient again after the update
+            var getResponseAfterUpdate = await _client.GetAsync($"{PatientApiUrl}/1");
+            var patientAfterUpdate = await DeserializeResponse<PatientDTO>(getResponseAfterUpdate);
+
+            // Assert: The patient should remain unchanged
+            Assert.Equal(patientBeforeUpdate.NIN, patientAfterUpdate.NIN);
+            Assert.Equal(patientBeforeUpdate.FirstName, patientAfterUpdate.FirstName);
+            Assert.Equal(patientBeforeUpdate.LastName, patientAfterUpdate.LastName);
+            Assert.Equal(patientBeforeUpdate.DateOfBirth, patientAfterUpdate.DateOfBirth);
+            Assert.Equal(patientBeforeUpdate.Gender, patientAfterUpdate.Gender);
+            Assert.Equal(patientBeforeUpdate.ContactInfo, patientAfterUpdate.ContactInfo);
+        }
+
+        [Fact]
+        public async Task PostPatient_ReturnsBadRequest_WhenPatientNameIsNotUnique()
+        {
+            // Arrange: Create a patient with an existing NIN
+            var duplicatePatient = new PatientCreateDTO
+            {
+                NIN = "000000001",
+                FirstName = "George",
+                LastName = "Washington",
+                DateOfBirth = new DateTime(1732, 2, 22),
+                Gender = "Male",
+                ContactInfo = "potus@usa.gov"
+            };
+
+            // Act: Try to create a duplicate patient
+            var response = await _client.PostAsync(PatientApiUrl, CreateContent(duplicatePatient));
+
+            // Assert: BadRequest due to uniqueness violation
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutPatient_ReturnsBadRequest_WhenPatientNameIsNotUnique()
+        {
+            // Arrange: Prepare a payload with an existing NIN
+            var duplicatePatient = new PatientUpdateDTO { NIN = "000000001" };
+
+            // Act: Try to update a patient with the duplicate data
+            var response = await _client.PutAsync($"{PatientApiUrl}/2", CreateContent(duplicatePatient));
+
+            // Assert: BadRequest due to uniqueness violation
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
     }
 }

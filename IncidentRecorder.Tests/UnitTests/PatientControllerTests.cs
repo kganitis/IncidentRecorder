@@ -42,6 +42,7 @@ namespace IncidentRecorder.Tests.Unit
             // Arrange: Create a new patient
             var newPatient = new PatientCreateDTO
             {
+                NIN = "000000002",
                 FirstName = "Jane",
                 LastName = "Doe",
                 DateOfBirth = new System.DateTime(1990, 5, 14),

@@ -3,7 +3,6 @@ using IncidentRecorder.Data;
 using IncidentRecorder.Models;
 using IncidentRecorder.DTOs.Patient;
 using Microsoft.EntityFrameworkCore;
-using IncidentRecorder.DTOs.Disease;
 
 namespace IncidentRecorder.Controllers
 {

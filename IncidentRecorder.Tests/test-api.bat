@@ -89,7 +89,7 @@ echo Testing API: Create Patient 1
 curl -X POST "http://localhost:5168/api/Patient" ^
 -H "Accept: application/json" ^
 -H "Content-Type: application/json" ^
--d "{\"firstName\":\"Kostas\",\"lastName\":\"Ganitis\",\"dateOfBirth\":\"1992-02-16T18:00:00Z\",\"gender\":\"Male\",\"contactInfo\":\"k.ganitis@unipi.gr\"}"
+-d "{\"NIN\":\"000000001\",\"firstName\":\"Kostas\",\"lastName\":\"Ganitis\",\"dateOfBirth\":\"1992-02-16T18:00:00Z\",\"gender\":\"Male\",\"contactInfo\":\"k.ganitis@unipi.gr\"}"
 
 echo.
 echo.
@@ -98,7 +98,7 @@ echo Testing API: Create Patient 2
 curl -X POST "http://localhost:5168/api/Patient" ^
 -H "Accept: application/json" ^
 -H "Content-Type: application/json" ^
--d "{\"firstName\":\"Efthymios\",\"lastName\":\"Alepis\",\"dateOfBirth\":\"1980-07-01T18:00:00Z\",\"gender\":\"Male\",\"contactInfo\":\"e.alepis@unipi.gr\"}"
+-d "{\"NIN\":\"000000002\",\"firstName\":\"Efthymios\",\"lastName\":\"Alepis\",\"dateOfBirth\":\"1980-07-01T18:00:00Z\",\"gender\":\"Male\",\"contactInfo\":\"e.alepis@unipi.gr\"}"
 
 echo.
 echo.
@@ -273,7 +273,16 @@ echo Testing API: Create Patient with Missing Field (FirstName)
 curl -X POST "http://localhost:5168/api/Patient" ^
 -H "Accept: application/json" ^
 -H "Content-Type: application/json" ^
--d "{\"lastName\":\"Doe\",\"dateOfBirth\":\"1990-05-20T00:00:00Z\",\"gender\":\"Male\",\"contactInfo\":\"john.doe@example.com\"}"
+-d "{\"nin\":\"000000010\",\"lastName\":\"Doe\",\"dateOfBirth\":\"1990-05-20T00:00:00Z\",\"gender\":\"Male\",\"contactInfo\":\"john.doe@example.com\"}"
+
+echo.
+echo.
+
+echo Testing API: Create Patient with Invalid NIN format 
+curl -X POST "http://localhost:5168/api/Patient" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"nin\":100000010,\"firstName\":\"John\",\"lastName\":\"Doe\",\"dateOfBirth\":\"1990-05-20T00:00:00Z\",\"gender\":\"Male\",\"contactInfo\":\"john.doe@example.com\"}"
 
 echo.
 echo.
@@ -282,7 +291,7 @@ echo Testing API: Create Patient with Invalid Date Format
 curl -X POST "http://localhost:5168/api/Patient" ^
 -H "Accept: application/json" ^
 -H "Content-Type: application/json" ^
--d "{\"firstName\":\"John\",\"lastName\":\"Doe\",\"dateOfBirth\":\"1990/05/20\",\"gender\":\"Male\",\"contactInfo\":\"john.doe@example.com\"}"
+-d "{\"nin\":\"000000010\",\"firstName\":\"John\",\"lastName\":\"Doe\",\"dateOfBirth\":\"1990/05/20\",\"gender\":\"Male\",\"contactInfo\":\"john.doe@example.com\"}"
 
 echo.
 echo.
@@ -341,6 +350,15 @@ curl -X PUT "http://localhost:5168/api/Location/1" ^
 -H "Accept: application/json" ^
 -H "Content-Type: application/json" ^
 -d "{\"country\":123}"
+
+echo.
+echo.
+
+echo Testing API: Update Patient with Invalid NIN format
+curl -X PUT "http://localhost:5168/api/Patient/1" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"nin\":100000010}"
 
 echo.
 echo.
@@ -713,6 +731,42 @@ curl -X PUT "http://localhost:5168/api/Disease/2" ^
 -H "Accept: application/json" ^
 -H "Content-Type: application/json" ^
 -d "{\"name\":\"COVID-19\"}"
+
+echo.
+echo.
+
+echo Testing API: Create Duplicate Location
+curl -X POST "http://localhost:5168/api/Location" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"city\":\"Athens\",\"country\":\"Greece\"}"
+
+echo.
+echo.
+
+echo Testing API: Update Location with Duplicate Data
+curl -X PUT "http://localhost:5168/api/Location/2" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"city\":\"Athens\",\"country\":\"Greece\"}"
+
+echo.
+echo.
+
+echo Testing API: Create Patient with Duplicate NIN
+curl -X POST "http://localhost:5168/api/Patient" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"NIN\":\"000000001\",\"firstName\":\"George\",\"lastName\":\"Pap\",\"dateOfBirth\":\"1998-02-16T18:00:00Z\",\"gender\":\"Male\",\"contactInfo\":\"geo.pap@unipi.gr\"}"
+
+echo.
+echo.
+
+echo Testing API: Update Patient with Duplicate NIN
+curl -X PUT "http://localhost:5168/api/Patient/2" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"NIN\":\"000000001\"}"
 
 echo.
 echo.

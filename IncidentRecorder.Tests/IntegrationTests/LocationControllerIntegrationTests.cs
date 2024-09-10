@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using IncidentRecorder.DTOs.Location;
-using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace IncidentRecorder.Tests.Integration
@@ -109,9 +108,10 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task DeleteLocation_DeletesExistingLocation()
         {
-            // Arrange: Create a new location to get its ID
+            // Arrange: Create a new location to delete
             var newLocation = new LocationCreateDTO { City = "Test City", Country = "Test Country" };
 
+            // Get the ID of the newly created location
             var postResponse = await _client.PostAsync(LocationApiUrl, CreateContent(newLocation));
             postResponse.EnsureSuccessStatusCode();
             var createdLocation = await DeserializeResponse<LocationDTO>(postResponse);
@@ -164,8 +164,8 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PutLocation_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
         {
             // Arrange: Provide an invalid payload with an integer where a string is expected
-            var invalidLocation1 = "{ \"city\": 12345 }";
-            var invalidLocation2 = "{ \"country\": 12345 }";
+            var invalidLocation1 = "{ \"city\": 12345, \"country\": \"Invalid city type\"}";
+            var invalidLocation2 = "{ \"city\": \"Invalid country type\", \"country\": 12345 }";
 
             var content1 = new StringContent(invalidLocation1, System.Text.Encoding.UTF8, "application/json");
             var content2 = new StringContent(invalidLocation2, System.Text.Encoding.UTF8, "application/json");
