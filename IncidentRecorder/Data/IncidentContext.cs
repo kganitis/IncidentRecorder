@@ -49,6 +49,11 @@ namespace IncidentRecorder.Data
                 .HasIndex(d => d.Name)
                 .IsUnique();
 
+            // Add unique index to the Patient.NIN column
+            modelBuilder.Entity<Patient>()
+                .HasIndex(p => p.NIN)
+                .IsUnique();
+
             // Add unique index to the combination of City and Country columns
             modelBuilder.Entity<Location>()
                 .HasIndex(l => new { l.City, l.Country })

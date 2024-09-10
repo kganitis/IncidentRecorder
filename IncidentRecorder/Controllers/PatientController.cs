@@ -3,6 +3,7 @@ using IncidentRecorder.Data;
 using IncidentRecorder.Models;
 using IncidentRecorder.DTOs.Patient;
 using Microsoft.EntityFrameworkCore;
+using IncidentRecorder.DTOs.Disease;
 
 namespace IncidentRecorder.Controllers
 {
@@ -28,6 +29,7 @@ namespace IncidentRecorder.Controllers
             var patientDtos = patients.Select(p => new PatientDTO
             {
                 Id = p.Id,
+                NIN = p.NIN,
                 FirstName = p.FirstName,
                 LastName = p.LastName,
                 DateOfBirth = p.DateOfBirth,
@@ -55,6 +57,7 @@ namespace IncidentRecorder.Controllers
             var patientDto = new PatientDTO
             {
                 Id = patient.Id,
+                NIN = patient.NIN,
                 FirstName = patient.FirstName,
                 LastName = patient.LastName,
                 DateOfBirth = patient.DateOfBirth,
@@ -70,8 +73,15 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<ActionResult<PatientDTO>> PostPatient([FromBody] PatientCreateDTO patientDto)
         {
+            // Check if a patient with the same NIN already exists
+            if (await _context.Patients.AnyAsync(p => p.NIN == patientDto.NIN))
+            {
+                return BadRequest("A patient with the same NIN already exists.");
+            }
+
             var patient = new Patient
             {
+                NIN = patientDto.NIN,
                 FirstName = patientDto.FirstName,
                 LastName = patientDto.LastName,
                 DateOfBirth = patientDto.DateOfBirth,
@@ -86,6 +96,7 @@ namespace IncidentRecorder.Controllers
             var createdPatientDto = new PatientDTO
             {
                 Id = patient.Id,
+                NIN = patient.NIN,
                 FirstName = patient.FirstName,
                 LastName = patient.LastName,
                 DateOfBirth = patient.DateOfBirth,
@@ -102,6 +113,12 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PutPatient(int id, [FromBody] PatientUpdateDTO patientDto)
         {
+            // Check if a patient with the same NIN already exists
+            if (await _context.Patients.AnyAsync(p => p.NIN == patientDto.NIN))
+            {
+                return BadRequest("A patient with the same NIN already exists.");
+            }
+
             var patient = await _context.Patients.FindAsync(id);
 
             if (patient == null)
@@ -110,6 +127,11 @@ namespace IncidentRecorder.Controllers
             }
 
             // Update only provided fields
+            if (!string.IsNullOrEmpty(patientDto.NIN))
+            {
+                patient.NIN = patientDto.NIN;
+            }
+
             if (!string.IsNullOrEmpty(patientDto.FirstName))
             {
                 patient.FirstName = patientDto.FirstName;
