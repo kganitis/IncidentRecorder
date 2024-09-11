@@ -8,14 +8,9 @@ namespace IncidentRecorder.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PatientController : ControllerBase
+    public class PatientController(IncidentContext context) : ControllerBase
     {
-        private readonly IncidentContext _context;
-
-        public PatientController(IncidentContext context)
-        {
-            _context = context;
-        }
+        private readonly IncidentContext _context = context;
 
         // Get all patients
         [HttpGet]
@@ -23,19 +18,7 @@ namespace IncidentRecorder.Controllers
         public async Task<ActionResult<IEnumerable<PatientDTO>>> GetPatients()
         {
             var patients = await _context.Patients.ToListAsync();
-
-            // Map to DTOs
-            var patientDtos = patients.Select(p => new PatientDTO
-            {
-                Id = p.Id,
-                NIN = p.NIN,
-                FirstName = p.FirstName,
-                LastName = p.LastName,
-                DateOfBirth = p.DateOfBirth,
-                Gender = p.Gender,
-                ContactInfo = p.ContactInfo
-            }).ToList();
-
+            var patientDtos = patients.Select(MapToDto).ToList();
             return Ok(patientDtos);
         }
 
@@ -52,19 +35,7 @@ namespace IncidentRecorder.Controllers
                 return NotFound();
             }
 
-            // Map to DTO
-            var patientDto = new PatientDTO
-            {
-                Id = patient.Id,
-                NIN = patient.NIN,
-                FirstName = patient.FirstName,
-                LastName = patient.LastName,
-                DateOfBirth = patient.DateOfBirth,
-                Gender = patient.Gender,
-                ContactInfo = patient.ContactInfo
-            };
-
-            return Ok(patientDto);
+            return Ok(MapToDto(patient));
         }
 
         // Create a new patient
@@ -92,19 +63,7 @@ namespace IncidentRecorder.Controllers
             _context.Patients.Add(patient);
             await _context.SaveChangesAsync();
 
-            // Map to DTO
-            var createdPatientDto = new PatientDTO
-            {
-                Id = patient.Id,
-                NIN = patient.NIN,
-                FirstName = patient.FirstName,
-                LastName = patient.LastName,
-                DateOfBirth = patient.DateOfBirth,
-                Gender = patient.Gender,
-                ContactInfo = patient.ContactInfo
-            };
-
-            return CreatedAtAction(nameof(GetPatient), new { id = patient.Id }, createdPatientDto);
+            return CreatedAtAction(nameof(GetPatient), new { id = patient.Id }, MapToDto(patient));
         }
 
         // Update an existing patient
@@ -114,49 +73,25 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> PutPatient(int id, [FromBody] PatientUpdateDTO patientDto)
         {
-            // Check if a patient with the same NIN already exists
-            if (await _context.Patients.AnyAsync(p => p.NIN == patientDto.NIN))
+            // Check if a patient with the same NIN already exists, excluding the current patient
+            if (await _context.Patients.AnyAsync(p => p.NIN == patientDto.NIN && p.Id != id))
             {
                 return Conflict("A patient with the same NIN already exists.");
             }
 
             var patient = await _context.Patients.FindAsync(id);
-
             if (patient == null)
             {
                 return NotFound();
             }
 
             // Update only provided fields
-            if (!string.IsNullOrEmpty(patientDto.NIN))
-            {
-                patient.NIN = patientDto.NIN;
-            }
-
-            if (!string.IsNullOrEmpty(patientDto.FirstName))
-            {
-                patient.FirstName = patientDto.FirstName;
-            }
-
-            if (!string.IsNullOrEmpty(patientDto.LastName))
-            {
-                patient.LastName = patientDto.LastName;
-            }
-
-            if (patientDto.DateOfBirth.HasValue)
-            {
-                patient.DateOfBirth = patientDto.DateOfBirth.Value;
-            }
-
-            if (!string.IsNullOrEmpty(patientDto.Gender))
-            {
-                patient.Gender = patientDto.Gender;
-            }
-
-            if (!string.IsNullOrEmpty(patientDto.ContactInfo))
-            {
-                patient.ContactInfo = patientDto.ContactInfo;
-            }
+            patient.NIN = patientDto.NIN ?? patient.NIN;
+            patient.FirstName = !string.IsNullOrEmpty(patientDto.FirstName) ? patientDto.FirstName : patient.FirstName;
+            patient.LastName = !string.IsNullOrEmpty(patientDto.LastName) ? patientDto.LastName : patient.LastName;
+            patient.DateOfBirth = patientDto.DateOfBirth ?? patient.DateOfBirth;
+            patient.Gender = !string.IsNullOrEmpty(patientDto.Gender) ? patientDto.Gender : patient.Gender;
+            patient.ContactInfo = !string.IsNullOrEmpty(patientDto.ContactInfo) ? patientDto.ContactInfo : patient.ContactInfo;
 
             _context.Entry(patient).State = EntityState.Modified;
 
@@ -170,10 +105,7 @@ namespace IncidentRecorder.Controllers
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();
@@ -201,5 +133,16 @@ namespace IncidentRecorder.Controllers
         {
             return _context.Patients.Any(e => e.Id == id);
         }
+
+        private PatientDTO MapToDto(Patient patient) => new()
+        {
+            Id = patient.Id,
+            NIN = patient.NIN,
+            FirstName = patient.FirstName,
+            LastName = patient.LastName,
+            DateOfBirth = patient.DateOfBirth,
+            Gender = patient.Gender,
+            ContactInfo = patient.ContactInfo
+        };
     }
 }

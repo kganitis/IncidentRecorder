@@ -8,14 +8,9 @@ namespace IncidentRecorder.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class DiseaseController : ControllerBase
+    public class DiseaseController(IncidentContext context) : ControllerBase
     {
-        private readonly IncidentContext _context;
-
-        public DiseaseController(IncidentContext context)
-        {
-            _context = context;
-        }
+        private readonly IncidentContext _context = context;
 
         // Get all diseases
         [HttpGet]
@@ -23,15 +18,7 @@ namespace IncidentRecorder.Controllers
         public async Task<ActionResult<IEnumerable<DiseaseDTO>>> GetDiseases()
         {
             var diseases = await _context.Diseases.ToListAsync();
-
-            // Map entities to DTOs
-            var diseaseDtos = diseases.Select(d => new DiseaseDTO
-            {
-                Id = d.Id,
-                Name = d.Name,
-                Description = d.Description
-            }).ToList();
-
+            var diseaseDtos = diseases.Select(MapToDto).ToList();
             return Ok(diseaseDtos);
         }
 
@@ -42,21 +29,11 @@ namespace IncidentRecorder.Controllers
         public async Task<ActionResult<DiseaseDTO>> GetDisease(int id)
         {
             var disease = await _context.Diseases.FindAsync(id);
-
             if (disease == null)
             {
                 return NotFound();
             }
-
-            // Map entity to DTO
-            var diseaseDto = new DiseaseDTO
-            {
-                Id = disease.Id,
-                Name = disease.Name,
-                Description = disease.Description
-            };
-
-            return Ok(diseaseDto);
+            return Ok(MapToDto(disease));
         }
 
         // Create a new disease
@@ -65,7 +42,6 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<DiseaseDTO>> PostDisease([FromBody] DiseaseCreateDTO diseaseDto)
         {
-            // Check if a disease with the same name already exists
             if (await _context.Diseases.AnyAsync(d => d.Name == diseaseDto.Name))
             {
                 return Conflict("A disease with the same name already exists.");
@@ -80,15 +56,7 @@ namespace IncidentRecorder.Controllers
             _context.Diseases.Add(disease);
             await _context.SaveChangesAsync();
 
-            // Map to DTO for response
-            var createdDiseaseDto = new DiseaseDTO
-            {
-                Id = disease.Id,
-                Name = disease.Name,
-                Description = disease.Description
-            };
-
-            return CreatedAtAction(nameof(GetDisease), new { id = disease.Id }, createdDiseaseDto);
+            return CreatedAtAction(nameof(GetDisease), new { id = disease.Id }, MapToDto(disease));
         }
 
         // Update an existing disease
@@ -98,29 +66,19 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> PutDisease(int id, [FromBody] DiseaseUpdateDTO diseaseDto)
         {
-            // Check if a disease with the same name already exists
-            if (await _context.Diseases.AnyAsync(d => d.Name == diseaseDto.Name))
+            if (await _context.Diseases.AnyAsync(d => d.Name == diseaseDto.Name && d.Id != id))
             {
                 return Conflict("A disease with the same name already exists.");
             }
 
             var disease = await _context.Diseases.FindAsync(id);
-
             if (disease == null)
             {
                 return NotFound();
             }
 
-            // Update only provided fields
-            if (!string.IsNullOrEmpty(diseaseDto.Name))
-            {
-                disease.Name = diseaseDto.Name;
-            }
-
-            if (!string.IsNullOrEmpty(diseaseDto.Description))
-            {
-                disease.Description = diseaseDto.Description;
-            }
+            disease.Name = !string.IsNullOrEmpty(diseaseDto.Name) ? diseaseDto.Name : disease.Name;
+            disease.Description = !string.IsNullOrEmpty(diseaseDto.Description) ? diseaseDto.Description : disease.Description;
 
             _context.Entry(disease).State = EntityState.Modified;
 
@@ -134,10 +92,7 @@ namespace IncidentRecorder.Controllers
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();
@@ -161,9 +116,13 @@ namespace IncidentRecorder.Controllers
             return NoContent();
         }
 
-        private bool DiseaseExists(int id)
+        private bool DiseaseExists(int id) => _context.Diseases.Any(e => e.Id == id);
+
+        private DiseaseDTO MapToDto(Disease disease) => new()
         {
-            return _context.Diseases.Any(e => e.Id == id);
-        }
+            Id = disease.Id,
+            Name = disease.Name,
+            Description = disease.Description
+        };
     }
 }

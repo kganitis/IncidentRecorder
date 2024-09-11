@@ -3,18 +3,13 @@ using IncidentRecorder.Models;
 
 namespace IncidentRecorder.Data
 {
-    public class IncidentContext : DbContext
+    public class IncidentContext(DbContextOptions<IncidentContext> options) : DbContext(options)
     {
-        public IncidentContext(DbContextOptions<IncidentContext> options) : base(options)
-        {
-        }
-
-        // Mark DbSet properties as virtual to allow mocking
-        public virtual DbSet<Patient> Patients { get; set; }
-        public virtual DbSet<Incident> Incidents { get; set; }
-        public virtual DbSet<Location> Locations { get; set; }
-        public virtual DbSet<Disease> Diseases { get; set; }
-        public virtual DbSet<Symptom> Symptoms { get; set; }
+        public DbSet<Patient> Patients { get; set; }
+        public DbSet<Incident> Incidents { get; set; }
+        public DbSet<Location> Locations { get; set; }
+        public DbSet<Disease> Diseases { get; set; }
+        public DbSet<Symptom> Symptoms { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

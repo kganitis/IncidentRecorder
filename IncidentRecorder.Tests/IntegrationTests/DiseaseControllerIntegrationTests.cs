@@ -4,11 +4,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace IncidentRecorder.Tests.Integration
 {
-    public class DiseaseControllerIntegrationTests : BaseIntegrationTest
+    public class DiseaseControllerIntegrationTests(WebApplicationFactory<Program> factory) : BaseIntegrationTest(factory)
     {
         private const string DiseaseApiUrl = "/api/disease";
-
-        public DiseaseControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
 
         [Fact]
         public async Task GetDiseases_ReturnsOkResult_WithSeededData()
@@ -101,7 +99,7 @@ namespace IncidentRecorder.Tests.Integration
             Assert.Equal("Updated flu description", updatedDiseaseResult.Description);
 
             // Delete the updated disease to clean up
-            var deleteResponse = await _client.DeleteAsync($"{DiseaseApiUrl}/{createdId}");
+            await _client.DeleteAsync($"{DiseaseApiUrl}/{createdId}");
         }
 
         [Fact]
@@ -245,7 +243,7 @@ namespace IncidentRecorder.Tests.Integration
 
             // Act
             var response = await _client.PostAsync(DiseaseApiUrl, content);
-            var responseContent = await response.Content.ReadAsStringAsync();
+            await response.Content.ReadAsStringAsync();
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

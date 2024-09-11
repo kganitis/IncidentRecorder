@@ -8,14 +8,9 @@ namespace IncidentRecorder.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class SymptomController : ControllerBase
+    public class SymptomController(IncidentContext context) : ControllerBase
     {
-        private readonly IncidentContext _context;
-
-        public SymptomController(IncidentContext context)
-        {
-            _context = context;
-        }
+        private readonly IncidentContext _context = context;
 
         // Get all symptoms
         [HttpGet]
@@ -23,15 +18,7 @@ namespace IncidentRecorder.Controllers
         public async Task<ActionResult<IEnumerable<SymptomDTO>>> GetSymptoms()
         {
             var symptoms = await _context.Symptoms.ToListAsync();
-
-            // Map to DTO
-            var symptomDtos = symptoms.Select(s => new SymptomDTO
-            {
-                Id = s.Id,
-                Name = s.Name,
-                Description = s.Description
-            }).ToList();
-
+            var symptomDtos = symptoms.Select(MapToDto).ToList();
             return Ok(symptomDtos);
         }
 
@@ -42,26 +29,18 @@ namespace IncidentRecorder.Controllers
         public async Task<ActionResult<SymptomDTO>> GetSymptom(int id)
         {
             var symptom = await _context.Symptoms.FindAsync(id);
-
             if (symptom == null)
             {
                 return NotFound();
             }
 
-            // Map to DTO
-            var symptomDto = new SymptomDTO
-            {
-                Id = symptom.Id,
-                Name = symptom.Name,
-                Description = symptom.Description
-            };
-
-            return Ok(symptomDto);
+            return Ok(MapToDto(symptom));
         }
 
         // Create a new symptom
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<SymptomDTO>> PostSymptom([FromBody] SymptomCreateDTO symptomDto)
         {
             // Check if a symptom with the same name already exists
@@ -79,15 +58,7 @@ namespace IncidentRecorder.Controllers
             _context.Symptoms.Add(symptom);
             await _context.SaveChangesAsync();
 
-            // Map to DTO for response
-            var createdSymptomDto = new SymptomDTO
-            {
-                Id = symptom.Id,
-                Name = symptom.Name,
-                Description = symptom.Description
-            };
-
-            return CreatedAtAction(nameof(GetSymptom), new { id = symptom.Id }, createdSymptomDto);
+            return CreatedAtAction(nameof(GetSymptom), new { id = symptom.Id }, MapToDto(symptom));
         }
 
         // Update an existing symptom
@@ -97,29 +68,21 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> PutSymptom(int id, [FromBody] SymptomUpdateDTO symptomDto)
         {
-            // Check if a symptom with the same name already exists
-            if (await _context.Symptoms.AnyAsync(s => s.Name == symptomDto.Name))
+            // Check if a symptom with the same name already exists, excluding the current symptom
+            if (await _context.Symptoms.AnyAsync(s => s.Name == symptomDto.Name && s.Id != id))
             {
                 return Conflict("A symptom with the same name already exists.");
             }
 
             var symptom = await _context.Symptoms.FindAsync(id);
-
             if (symptom == null)
             {
                 return NotFound();
             }
 
             // Update only provided fields
-            if (!string.IsNullOrEmpty(symptomDto.Name))
-            {
-                symptom.Name = symptomDto.Name;
-            }
-
-            if (!string.IsNullOrEmpty(symptomDto.Description))
-            {
-                symptom.Description = symptomDto.Description;
-            }
+            symptom.Name = symptomDto.Name ?? symptom.Name;
+            symptom.Description = symptomDto.Description ?? symptom.Description;
 
             _context.Entry(symptom).State = EntityState.Modified;
 
@@ -133,10 +96,7 @@ namespace IncidentRecorder.Controllers
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();
@@ -164,5 +124,12 @@ namespace IncidentRecorder.Controllers
         {
             return _context.Symptoms.Any(e => e.Id == id);
         }
+
+        private SymptomDTO MapToDto(Symptom symptom) => new()
+        {
+            Id = symptom.Id,
+            Name = symptom.Name,
+            Description = symptom.Description
+        };
     }
 }

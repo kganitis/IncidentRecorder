@@ -8,14 +8,9 @@ namespace IncidentRecorder.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class LocationController : ControllerBase
+    public class LocationController(IncidentContext context) : ControllerBase
     {
-        private readonly IncidentContext _context;
-
-        public LocationController(IncidentContext context)
-        {
-            _context = context;
-        }
+        private readonly IncidentContext _context = context;
 
         // Get all locations
         [HttpGet]
@@ -23,15 +18,7 @@ namespace IncidentRecorder.Controllers
         public async Task<ActionResult<IEnumerable<LocationDTO>>> GetLocations()
         {
             var locations = await _context.Locations.ToListAsync();
-
-            // Map to DTOs
-            var locationDtos = locations.Select(l => new LocationDTO
-            {
-                Id = l.Id,
-                City = l.City,
-                Country = l.Country
-            }).ToList();
-
+            var locationDtos = locations.Select(MapToDto).ToList();
             return Ok(locationDtos);
         }
 
@@ -42,21 +29,11 @@ namespace IncidentRecorder.Controllers
         public async Task<ActionResult<LocationDTO>> GetLocation(int id)
         {
             var location = await _context.Locations.FindAsync(id);
-
             if (location == null)
             {
                 return NotFound();
             }
-
-            // Map to DTO
-            var locationDto = new LocationDTO
-            {
-                Id = location.Id,
-                City = location.City,
-                Country = location.Country
-            };
-
-            return Ok(locationDto);
+            return Ok(MapToDto(location));
         }
 
         // Create a new location
@@ -65,7 +42,6 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<LocationDTO>> PostLocation([FromBody] LocationCreateDTO locationDto)
         {
-            // Check if location already exists
             if (await _context.Locations.AnyAsync(l => l.City == locationDto.City && l.Country == locationDto.Country))
             {
                 return Conflict("A location with the same city and country name already exists.");
@@ -80,15 +56,7 @@ namespace IncidentRecorder.Controllers
             _context.Locations.Add(location);
             await _context.SaveChangesAsync();
 
-            // Map to DTO for response
-            var createdLocationDto = new LocationDTO
-            {
-                Id = location.Id,
-                City = location.City,
-                Country = location.Country
-            };
-
-            return CreatedAtAction(nameof(GetLocation), new { id = location.Id }, createdLocationDto);
+            return CreatedAtAction(nameof(GetLocation), new { id = location.Id }, MapToDto(location));
         }
 
         // Update an existing location
@@ -98,29 +66,21 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> PutLocation(int id, [FromBody] LocationUpdateDTO locationDto)
         {
-            // Check if location already exists
-            if (await _context.Locations.AnyAsync(l => l.City == locationDto.City && l.Country == locationDto.Country))
+            // Check for duplicate location
+            if (await _context.Locations.AnyAsync(l => l.City == locationDto.City && l.Country == locationDto.Country && l.Id != id))
             {
                 return Conflict("A location with the same city and country name already exists.");
             }
 
             var location = await _context.Locations.FindAsync(id);
-
             if (location == null)
             {
                 return NotFound();
             }
 
-            // Update only the provided fields
-            if (!string.IsNullOrEmpty(locationDto.City))
-            {
-                location.City = locationDto.City;
-            }
-
-            if (!string.IsNullOrEmpty(locationDto.Country))
-            {
-                location.Country = locationDto.Country;
-            }
+            // Update only provided fields
+            location.City = !string.IsNullOrEmpty(locationDto.City) ? locationDto.City : location.City;
+            location.Country = !string.IsNullOrEmpty(locationDto.Country) ? locationDto.Country : location.Country;
 
             _context.Entry(location).State = EntityState.Modified;
 
@@ -134,10 +94,7 @@ namespace IncidentRecorder.Controllers
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();
@@ -163,7 +120,14 @@ namespace IncidentRecorder.Controllers
 
         private bool LocationExists(int id)
         {
-            return _context.Locations.Any(e => e.Id == id);
+            return _context.Locations.Any(l => l.Id == id);
         }
+
+        private LocationDTO MapToDto(Location location) => new()
+        {
+            Id = location.Id,
+            City = location.City,
+            Country = location.Country
+        };
     }
 }
