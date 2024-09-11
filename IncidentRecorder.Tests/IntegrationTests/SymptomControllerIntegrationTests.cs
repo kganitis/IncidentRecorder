@@ -1,189 +1,139 @@
-﻿using Xunit;
-using System.Threading.Tasks;
-using System.Net.Http;
-using System.Net;
+﻿using System.Net;
 using IncidentRecorder.DTOs.Symptom;
-using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using IncidentRecorder.Tests.Integration;
 
 namespace IncidentRecorder.Tests.Integration
 {
     public class SymptomControllerIntegrationTests : BaseIntegrationTest
     {
+        private const string SymptomApiUrl = "/api/symptom";
+
         public SymptomControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
 
-        // Test: Get all symptoms with seeded data
         [Fact]
         public async Task GetSymptoms_ReturnsOkResult_WithSeededData()
         {
             // Act
-            var response = await _client.GetAsync("/api/symptom");
+            var response = await _client.GetAsync(SymptomApiUrl);
 
             // Assert
             response.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            var content = await response.Content.ReadAsStringAsync();
-            var symptoms = JsonConvert.DeserializeObject<List<SymptomDTO>>(content);
-
-            // Verify the seeded symptom is returned (assuming "Cough" exists)
+            var symptoms = await DeserializeResponse<List<SymptomDTO>>(response);
             Assert.NotNull(symptoms);
-            Assert.Contains(symptoms, s => s.Name == "Cough" && s.Description == "Persistent cough");
-        }
 
-        // Test: Get a single symptom by dynamically capturing ID after creation
-        [Fact]
-        public async Task GetSymptomById_ReturnsOkResult_WhenSymptomExists()
-        {
-            // Arrange: Create a new symptom to get its ID
-            var newSymptom = new SymptomCreateDTO
+            var expectedSymptoms = new[]
             {
-                Name = "Fever",
-                Description = "High body temperature"
+                new { Id = 1, Name = "Cough", Description = "Persistent cough" },
+                // TODO check for all the symptoms
+                new { Id = 6, Name = "Rash", Description = "Red, itchy skin rash with blisters" }
             };
 
-            var content = new StringContent(JsonConvert.SerializeObject(newSymptom), System.Text.Encoding.UTF8, "application/json");
-
-            var postResponse = await _client.PostAsync("/api/symptom", content);
-            postResponse.EnsureSuccessStatusCode();
-            var createdContent = await postResponse.Content.ReadAsStringAsync();
-            var createdSymptom = JsonConvert.DeserializeObject<SymptomDTO>(createdContent);
-            var createdId = createdSymptom.Id;
-
-            // Act: Fetch the symptom by the captured ID
-            var getResponse = await _client.GetAsync($"/api/symptom/{createdId}");
-
-            // Assert
-            getResponse.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-
-            var getContent = await getResponse.Content.ReadAsStringAsync();
-            var symptom = JsonConvert.DeserializeObject<SymptomDTO>(getContent);
-
-            // Verify the symptom details
-            Assert.NotNull(symptom);
-            Assert.Equal(createdId, symptom.Id);
-            Assert.Equal("Fever", symptom.Name);
-            Assert.Equal("High body temperature", symptom.Description);
+            foreach (var expected in expectedSymptoms)
+            {
+                Assert.Contains(symptoms, i => i.Id == expected.Id && i.Name == expected.Name && i.Description == expected.Description);
+            }
         }
 
-        // Test: Post a new symptom and verify creation
+        [Theory]
+        [InlineData(1, "Cough")]
+        [InlineData(2, "Nausea")]
+        [InlineData(3, "Chills")]
+        [InlineData(4, "Coughing up blood")]
+        [InlineData(5, "Joint Pain")]
+        [InlineData(6, "Rash")]
+        public async Task GetSymptomById_ReturnsOkResult_WhenSymptomExists(int id, string name)
+        {
+            // Act
+            var response = await _client.GetAsync($"{SymptomApiUrl}/{id}");
+
+            // Assert
+            var symptom = await DeserializeResponse<SymptomDTO>(response);
+            Assert.NotNull(symptom);
+            Assert.Equal(id, symptom.Id);
+            Assert.Equal(name, symptom.Name);
+        }
+
         [Fact]
         public async Task PostSymptom_CreatesNewSymptom()
         {
-            // Arrange
-            var newSymptom = new SymptomCreateDTO
-            {
-                Name = "Headache",
-                Description = "Pain in head or neck"
-            };
-
-            var content = new StringContent(JsonConvert.SerializeObject(newSymptom), System.Text.Encoding.UTF8, "application/json");
+            // Arrange: Prepare new symptom data
+            var newSymptom = new SymptomCreateDTO { Name = "Taste Loss", Description = "Loss of taste sensation" };
 
             // Act
-            var response = await _client.PostAsync("/api/symptom", content);
+            var response = await _client.PostAsync(SymptomApiUrl, CreateContent(newSymptom));
 
             // Assert
             response.EnsureSuccessStatusCode();
+            var createdSymptom = await DeserializeResponse<SymptomDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-            // Deserialize the created symptom to verify the content
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var createdSymptom = JsonConvert.DeserializeObject<SymptomDTO>(responseContent);
-
             Assert.NotNull(createdSymptom);
-            Assert.Equal("Headache", createdSymptom.Name);
-            Assert.Equal("Pain in head or neck", createdSymptom.Description);
+            Assert.Equal("Taste Loss", createdSymptom.Name);
+            Assert.Equal("Loss of taste sensation", createdSymptom.Description);
         }
 
-        // Test: Update an existing symptom
         [Fact]
         public async Task PutSymptom_UpdatesExistingSymptom()
         {
-            // Arrange: Create a new symptom to get its ID
-            var newSymptom = new SymptomCreateDTO
-            {
-                Name = "Fever",
-                Description = "High body temperature"
-            };
+            // Arrange: Create a new symptom to update
+            var newSymptom = new SymptomCreateDTO { Name = "Test Symptom", Description = "Test Description" };
 
-            var postContent = new StringContent(JsonConvert.SerializeObject(newSymptom), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/symptom", postContent);
+            // Get the ID of the newly created symptom
+            var postResponse = await _client.PostAsync(SymptomApiUrl, CreateContent(newSymptom));
             postResponse.EnsureSuccessStatusCode();
-
-            var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
-            var createdSymptom = JsonConvert.DeserializeObject<SymptomDTO>(postCreatedContent);
+            var createdSymptom = await DeserializeResponse<SymptomDTO>(postResponse);
             var createdId = createdSymptom.Id;
 
-            // Arrange: Prepare update data
-            var updatedSymptom = new SymptomUpdateDTO
-            {
-                Name = "Mild Fever",
-                Description = "Moderate high body temperature"
-            };
+            // Arrange: Prepare updated symptom data
+            var updatedSymptom = new SymptomUpdateDTO { Name = "Updated Symptom", Description = "Updated Description" };
 
-            var updateContent = new StringContent(JsonConvert.SerializeObject(updatedSymptom), System.Text.Encoding.UTF8, "application/json");
-
-            // Act: Update the symptom
-            var putResponse = await _client.PutAsync($"/api/symptom/{createdId}", updateContent);
+            // Act
+            var putResponse = await _client.PutAsync($"{SymptomApiUrl}/{createdId}", CreateContent(updatedSymptom));
 
             // Assert
             Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
 
             // Verify that the symptom was updated by fetching it again
-            var getResponse = await _client.GetAsync($"/api/symptom/{createdId}");
-            var getContent = await getResponse.Content.ReadAsStringAsync();
-            var updatedSymptomResult = JsonConvert.DeserializeObject<SymptomDTO>(getContent);
+            var getResponse = await _client.GetAsync($"{SymptomApiUrl}/{createdId}");
+            var updatedSymptomResult = await DeserializeResponse<SymptomDTO>(getResponse);
 
             Assert.NotNull(updatedSymptomResult);
-            Assert.Equal("Mild Fever", updatedSymptomResult.Name);
-            Assert.Equal("Moderate high body temperature", updatedSymptomResult.Description);
+            Assert.Equal("Updated Symptom", updatedSymptomResult.Name);
+            Assert.Equal("Updated Description", updatedSymptomResult.Description);
+
+            // Delete the updated symptom to clean up
+            var deleteResponse = await _client.DeleteAsync($"{SymptomApiUrl}/{createdId}");
         }
 
-        // Test: Delete an existing symptom
         [Fact]
         public async Task DeleteSymptom_DeletesExistingSymptom()
         {
             // Arrange: Create a new symptom to get its ID
-            var newSymptom = new SymptomCreateDTO
-            {
-                Name = "Nausea",
-                Description = "Feeling of sickness"
-            };
+            var newSymptom = new SymptomCreateDTO { Name = "Test Symptom", Description = "Test Description" };
 
-            var postContent = new StringContent(JsonConvert.SerializeObject(newSymptom), System.Text.Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("/api/symptom", postContent);
+            var postResponse = await _client.PostAsync(SymptomApiUrl, CreateContent(newSymptom));
             postResponse.EnsureSuccessStatusCode();
-
-            var postCreatedContent = await postResponse.Content.ReadAsStringAsync();
-            var createdSymptom = JsonConvert.DeserializeObject<SymptomDTO>(postCreatedContent);
+            var createdSymptom = await DeserializeResponse<SymptomDTO>(postResponse);
             var createdId = createdSymptom.Id;
 
-            // Act: Delete the symptom
-            var deleteResponse = await _client.DeleteAsync($"/api/symptom/{createdId}");
+            // Act
+            var deleteResponse = await _client.DeleteAsync($"{SymptomApiUrl}/{createdId}");
 
             // Assert
             Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
             // Verify that the symptom no longer exists
-            var getResponse = await _client.GetAsync($"/api/symptom/{createdId}");
+            var getResponse = await _client.GetAsync($"{SymptomApiUrl}/{createdId}");
             Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
         }
 
         [Fact]
         public async Task PostSymptom_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
-            // Arrange: Missing the required Name field
-            var invalidSymptom = new SymptomCreateDTO
-            {
-                Description = "Feeling of discomfort"
-            };
-
-            var content = new StringContent(JsonConvert.SerializeObject(invalidSymptom), System.Text.Encoding.UTF8, "application/json");
+            // Arrange: Create a new symptom with missing name
+            var invalidSymptom = new SymptomCreateDTO { Description = "Missing Name" };
 
             // Act
-            var response = await _client.PostAsync("/api/symptom", content);
+            var response = await _client.PostAsync(SymptomApiUrl, CreateContent(invalidSymptom));
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -192,17 +142,26 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PostSymptom_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
         {
-            // Arrange: Providing an invalid type for Name (e.g., an integer instead of a string)
-            var invalidSymptom = new
-            {
-                Name = 12345,  // Invalid data type
-                Description = "Feeling of discomfort"
-            };
-
-            var content = new StringContent(JsonConvert.SerializeObject(invalidSymptom), System.Text.Encoding.UTF8, "application/json");
+            // Arrange: Provide an integer for the name which should be a string
+            var invalidSymptom = new { Name = 12345, Description = "Invalid name type" }; // Invalid data type
 
             // Act
-            var response = await _client.PostAsync("/api/symptom", content);
+            var response = await _client.PostAsync(SymptomApiUrl, CreateContent(invalidSymptom));
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutSymptom_ReturnsBadRequest_WhenInvalidDataTypeIsProvided()
+        {
+            // Arrange: Provide an invalid payload with an integer for the name where a string is expected
+            var invalidSymptom = "{ \"name\": 12345, \"description\": \"Invalid name type\" }";
+
+            var content = new StringContent(invalidSymptom, System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await _client.PutAsync($"{SymptomApiUrl}/1", content);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -211,8 +170,8 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task GetSymptomById_ReturnsNotFound_WhenSymptomDoesNotExist()
         {
-            // Act: Try to get a symptom with a non-existent ID
-            var response = await _client.GetAsync("/api/symptom/999");
+            // Act: Try to get a non-existing symptom
+            var response = await _client.GetAsync($"{SymptomApiUrl}/999");
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -221,17 +180,11 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task PutSymptom_ReturnsNotFound_WhenSymptomDoesNotExist()
         {
-            // Arrange: Prepare update data for a non-existent symptom
-            var updateSymptom = new SymptomUpdateDTO
-            {
-                Name = "Non-existent Symptom",
-                Description = "This symptom does not exist"
-            };
+            // Arrange
+            var updateSymptom = new SymptomUpdateDTO { };
 
-            var content = new StringContent(JsonConvert.SerializeObject(updateSymptom), System.Text.Encoding.UTF8, "application/json");
-
-            // Act: Try to update a non-existent symptom
-            var response = await _client.PutAsync("/api/symptom/999", content);
+            // Act: Try to update a non-existing symptom
+            var response = await _client.PutAsync($"{SymptomApiUrl}/999", CreateContent(updateSymptom));
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -240,12 +193,122 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task DeleteSymptom_ReturnsNotFound_WhenSymptomDoesNotExist()
         {
-            // Act: Try to delete a non-existent symptom
-            var response = await _client.DeleteAsync("/api/symptom/999");
+            // Act: Try to delete a non-existing symptom
+            var response = await _client.DeleteAsync($"{SymptomApiUrl}/999");
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
+        [Fact]
+        public async Task GetSymptom_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.GetAsync($"{SymptomApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutSymptom_ReturnsBadRequest_WithInvalidID()
+        {
+            // Arrange
+            var updateSymptom = new SymptomUpdateDTO { };
+
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.PutAsync($"{SymptomApiUrl}/invalid-id", CreateContent(updateSymptom));
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteSymptom_ReturnsBadRequest_WithInvalidID()
+        {
+            // Act: Send the request with an invalid ID in the URL (e.g., a string instead of an integer)
+            var response = await _client.DeleteAsync($"{SymptomApiUrl}/invalid-id");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PostSymptom_ReturnsBadRequest_WhenPayloadIsEmpty()
+        {
+            // Arrange: Create an empty payload
+            var emptyPayload = "{}";
+
+            var content = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await _client.PostAsync(SymptomApiUrl, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Contains("The Name field is required.", responseContent);
+            Assert.Contains("The Description field is required.", responseContent);
+        }
+
+        [Fact]
+        public async Task PutSymptom_ReturnsNoContent_WhenPayloadIsEmpty()
+        {
+            // Arrange: Fetch the existing symptom with ID = 1 before the update
+            var getResponseBeforeUpdate = await _client.GetAsync($"{SymptomApiUrl}/1");
+            getResponseBeforeUpdate.EnsureSuccessStatusCode();
+
+            var symptomBeforeUpdate = await DeserializeResponse<SymptomDTO>(getResponseBeforeUpdate);
+
+            // Act: Send an empty payload to update the symptom
+            var emptyPayload = "{}"; // Empty JSON object
+            var updateContent = new StringContent(emptyPayload, System.Text.Encoding.UTF8, "application/json");
+
+            var putResponse = await _client.PutAsync($"{SymptomApiUrl}/1", updateContent);
+
+            // Assert: The response should be 204 No Content
+            Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
+
+            // Act: Fetch the symptom again after the update
+            var getResponseAfterUpdate = await _client.GetAsync($"{SymptomApiUrl}/1");
+            var symptomAfterUpdate = await DeserializeResponse<SymptomDTO>(getResponseAfterUpdate);
+
+            // Assert: The symptom should remain unchanged
+            Assert.Equal(symptomBeforeUpdate.Name, symptomAfterUpdate.Name);
+            Assert.Equal(symptomBeforeUpdate.Description, symptomAfterUpdate.Description);
+        }
+
+        [Fact]
+        public async Task PostSymptom_ReturnsConflict_WhenSymptomNameIsNotUnique()
+        {
+            // Arrange: Create a symptom with an existing name
+            var duplicateSymptom = new SymptomCreateDTO
+            {
+                Name = "Cough",  // Name already exists
+                Description = "Symptom with duplicate name"
+            };
+
+            // Act: Try to create a duplicate symptom
+            var response = await _client.PostAsync(SymptomApiUrl, CreateContent(duplicateSymptom));
+
+            // Assert: Conflict due to uniqueness violation
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutSymptom_ReturnsConflict_WhenSymptomNameIsNotUnique()
+        {
+            // Arrange: Prepare a symptom with an existing name
+            var duplicateSymptom = new SymptomUpdateDTO
+            {
+                Name = "Cough",  // Name already exists
+            };
+
+            // Act: Try to update a symptom with the duplicate name
+            var response = await _client.PutAsync($"{SymptomApiUrl}/2", CreateContent(duplicateSymptom));
+
+            // Assert: Conflict due to uniqueness violation
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
     }
 }

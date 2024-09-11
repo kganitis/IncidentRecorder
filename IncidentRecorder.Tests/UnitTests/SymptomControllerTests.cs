@@ -56,15 +56,15 @@ namespace IncidentRecorder.Tests.Unit
 
             var newSymptom = new SymptomCreateDTO
             {
-                Name = "Cough",
-                Description = "Persistent cough"
+                Name = "New Symptom",
+                Description = "New Symptom Description"
             };
 
             var result = await controller.PostSymptom(newSymptom);
 
             var actionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
             var createdSymptom = Assert.IsType<SymptomDTO>(actionResult.Value);
-            Assert.Equal("Cough", createdSymptom.Name);
+            Assert.Equal("New Symptom", createdSymptom.Name);
         }
 
         // Test: Update an existing symptom

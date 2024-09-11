@@ -291,7 +291,7 @@ namespace IncidentRecorder.Tests.Integration
         }
 
         [Fact]
-        public async Task PostLocation_ReturnsBadRequest_WhenLocationCityIsNotUnique()
+        public async Task PostLocation_ReturnsConflict_WhenLocationCityIsNotUnique()
         {
             // Arrange: Create an existing location
             var duplicateLocation = new LocationCreateDTO { City = "New York",  Country = "USA" };
@@ -299,12 +299,12 @@ namespace IncidentRecorder.Tests.Integration
             // Act: Try to create a duplicate location
             var response = await _client.PostAsync(LocationApiUrl, CreateContent(duplicateLocation));
 
-            // Assert: BadRequest due to uniqueness violation
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            // Assert: Conflict due to uniqueness violation
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
 
         [Fact]
-        public async Task PutLocation_ReturnsBadRequest_WhenLocationCityIsNotUnique()
+        public async Task PutLocation_ReturnsConflict_WhenLocationCityIsNotUnique()
         {
             // Arrange: Prepare an existing location
             var duplicateLocation = new LocationUpdateDTO { City = "New York", Country = "USA" };
@@ -312,8 +312,8 @@ namespace IncidentRecorder.Tests.Integration
             // Act: Try to update a location with the duplicate data
             var response = await _client.PutAsync($"{LocationApiUrl}/2", CreateContent(duplicateLocation));
 
-            // Assert: BadRequest due to uniqueness violation
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            // Assert: Conflict due to uniqueness violation
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
     }
 }

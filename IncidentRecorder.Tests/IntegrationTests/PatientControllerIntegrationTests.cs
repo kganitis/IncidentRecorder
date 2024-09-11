@@ -371,7 +371,7 @@ namespace IncidentRecorder.Tests.Integration
         }
 
         [Fact]
-        public async Task PostPatient_ReturnsBadRequest_WhenPatientNameIsNotUnique()
+        public async Task PostPatient_ReturnsConflict_WhenPatientNameIsNotUnique()
         {
             // Arrange: Create a patient with an existing NIN
             var duplicatePatient = new PatientCreateDTO
@@ -387,12 +387,12 @@ namespace IncidentRecorder.Tests.Integration
             // Act: Try to create a duplicate patient
             var response = await _client.PostAsync(PatientApiUrl, CreateContent(duplicatePatient));
 
-            // Assert: BadRequest due to uniqueness violation
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            // Assert: Conflict due to uniqueness violation
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
 
         [Fact]
-        public async Task PutPatient_ReturnsBadRequest_WhenPatientNameIsNotUnique()
+        public async Task PutPatient_ReturnsConflict_WhenPatientNameIsNotUnique()
         {
             // Arrange: Prepare a payload with an existing NIN
             var duplicatePatient = new PatientUpdateDTO { NIN = "000000001" };
@@ -400,8 +400,8 @@ namespace IncidentRecorder.Tests.Integration
             // Act: Try to update a patient with the duplicate data
             var response = await _client.PutAsync($"{PatientApiUrl}/2", CreateContent(duplicatePatient));
 
-            // Assert: BadRequest due to uniqueness violation
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            // Assert: Conflict due to uniqueness violation
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
     }
 }

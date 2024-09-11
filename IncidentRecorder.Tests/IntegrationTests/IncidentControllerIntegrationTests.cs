@@ -47,7 +47,7 @@ namespace IncidentRecorder.Tests.Integration
         [InlineData(1, "COVID-19", "John Doe", "New York, USA", "Cough")]
         [InlineData(2, "Gastroenteritis", "Alex Smith", "Toronto, Canada", "Nausea")]
         [InlineData(3, "Malaria", "Maria Gonzalez", "Madrid, Spain", "Chills")]
-        [InlineData(4, "Tuberculosis", "John Doe", "London, UK", "Persistent Cough")]
+        [InlineData(4, "Tuberculosis", "John Doe", "London, UK", "Coughing up blood")]
         [InlineData(5, "Dengue Fever", "Emma Brown", "Sydney, Australia", "Joint Pain")]
         [InlineData(6, "Chickenpox", "Liam O'Reilly", "Dublin, Ireland", "Rash")]
         public async Task GetIncidentById_ReturnsOkResult_WhenIncidentExists(int id, string diseaseName, string patientName, string location, string firstSymptom)

@@ -64,6 +64,12 @@ namespace IncidentRecorder.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<ActionResult<SymptomDTO>> PostSymptom([FromBody] SymptomCreateDTO symptomDto)
         {
+            // Check if a symptom with the same name already exists
+            if (await _context.Symptoms.AnyAsync(s => s.Name == symptomDto.Name))
+            {
+                return Conflict("A symptom with the same name already exists.");
+            }
+
             var symptom = new Symptom
             {
                 Name = symptomDto.Name,
@@ -88,8 +94,15 @@ namespace IncidentRecorder.Controllers
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> PutSymptom(int id, [FromBody] SymptomUpdateDTO symptomDto)
         {
+            // Check if a symptom with the same name already exists
+            if (await _context.Symptoms.AnyAsync(s => s.Name == symptomDto.Name))
+            {
+                return Conflict("A symptom with the same name already exists.");
+            }
+
             var symptom = await _context.Symptoms.FindAsync(id);
 
             if (symptom == null)

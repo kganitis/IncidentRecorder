@@ -70,12 +70,13 @@ namespace IncidentRecorder.Controllers
         // Create a new patient
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<PatientDTO>> PostPatient([FromBody] PatientCreateDTO patientDto)
         {
             // Check if a patient with the same NIN already exists
             if (await _context.Patients.AnyAsync(p => p.NIN == patientDto.NIN))
             {
-                return BadRequest("A patient with the same NIN already exists.");
+                return Conflict("A patient with the same NIN already exists.");
             }
 
             var patient = new Patient
@@ -110,12 +111,13 @@ namespace IncidentRecorder.Controllers
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> PutPatient(int id, [FromBody] PatientUpdateDTO patientDto)
         {
             // Check if a patient with the same NIN already exists
             if (await _context.Patients.AnyAsync(p => p.NIN == patientDto.NIN))
             {
-                return BadRequest("A patient with the same NIN already exists.");
+                return Conflict("A patient with the same NIN already exists.");
             }
 
             var patient = await _context.Patients.FindAsync(id);

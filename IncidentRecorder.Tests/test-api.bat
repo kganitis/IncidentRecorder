@@ -771,4 +771,22 @@ curl -X PUT "http://localhost:5168/api/Patient/2" ^
 echo.
 echo.
 
+echo Testing API: Create Symptom with Duplicate Name
+curl -X POST "http://localhost:5168/api/Symptom" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"name\":\"Fever\",\"description\":\"Symptom with duplicate name\"}"
+
+echo.
+echo.
+
+echo Testing API: Update Symptom with Duplicate Name
+curl -X PUT "http://localhost:5168/api/Symptom/2" ^
+-H "Accept: application/json" ^
+-H "Content-Type: application/json" ^
+-d "{\"name\":\"Fever\"}"
+
+echo.
+echo.
+
 pause

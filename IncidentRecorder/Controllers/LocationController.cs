@@ -62,12 +62,13 @@ namespace IncidentRecorder.Controllers
         // Create a new location
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<LocationDTO>> PostLocation([FromBody] LocationCreateDTO locationDto)
         {
             // Check if location already exists
             if (await _context.Locations.AnyAsync(l => l.City == locationDto.City && l.Country == locationDto.Country))
             {
-                return BadRequest("A location with the same city and country name already exists.");
+                return Conflict("A location with the same city and country name already exists.");
             }
 
             var location = new Location
@@ -94,12 +95,13 @@ namespace IncidentRecorder.Controllers
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> PutLocation(int id, [FromBody] LocationUpdateDTO locationDto)
         {
             // Check if location already exists
             if (await _context.Locations.AnyAsync(l => l.City == locationDto.City && l.Country == locationDto.Country))
             {
-                return BadRequest("A location with the same city and country name already exists.");
+                return Conflict("A location with the same city and country name already exists.");
             }
 
             var location = await _context.Locations.FindAsync(id);

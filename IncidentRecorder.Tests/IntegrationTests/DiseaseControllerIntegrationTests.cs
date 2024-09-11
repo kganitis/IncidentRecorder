@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using IncidentRecorder.DTOs.Disease;
-using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace IncidentRecorder.Tests.Integration
@@ -280,7 +279,7 @@ namespace IncidentRecorder.Tests.Integration
         }
 
         [Fact]
-        public async Task PostDisease_ReturnsBadRequest_WhenDiseaseNameIsNotUnique()
+        public async Task PostDisease_ReturnsConflict_WhenDiseaseNameIsNotUnique()
         {
             // Arrange: Create a disease with an existing name
             var duplicateDisease = new DiseaseCreateDTO
@@ -292,12 +291,12 @@ namespace IncidentRecorder.Tests.Integration
             // Act: Try to create a duplicate disease
             var response = await _client.PostAsync(DiseaseApiUrl, CreateContent(duplicateDisease));
 
-            // Assert: BadRequest due to uniqueness violation
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            // Assert: Conflict due to uniqueness violation
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
 
         [Fact]
-        public async Task PutDisease_ReturnsBadRequest_WhenDiseaseNameIsNotUnique()
+        public async Task PutDisease_ReturnsConflict_WhenDiseaseNameIsNotUnique()
         {
             // Arrange: Prepare a disease with an existing name
             var duplicateDisease = new DiseaseUpdateDTO
@@ -308,8 +307,8 @@ namespace IncidentRecorder.Tests.Integration
             // Act: Try to update a disease with the duplicate name
             var response = await _client.PutAsync($"{DiseaseApiUrl}/2", CreateContent(duplicateDisease));
 
-            // Assert: BadRequest due to uniqueness violation
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            // Assert: Conflict due to uniqueness violation
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
     }
 }
