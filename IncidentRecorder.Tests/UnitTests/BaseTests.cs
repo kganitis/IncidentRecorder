@@ -26,8 +26,9 @@ namespace IncidentRecorder.Tests.Unit
             context.Incidents.Add(new Incident
             {
                 Id = 1,
+                DiseaseId = 1,
                 Disease = new Disease { Id = 1, Name = "COVID-19", Description = "Coronavirus Disease" },
-                Patient = new Patient { Id = 1, NIN = "000000001", FirstName = "John", LastName = "Doe", ContactInfo = "john.doe@example.com", Gender = "Male" },
+                Patient = new Patient { Id = 1, NIN = "000000001", FirstName = "John", LastName = "Doe", DateOfBirth = new DateTime(1960, 1, 1), ContactInfo = "john.doe@example.com", Gender = "Male" },
                 Location = new Location { Id = 1, City = "New York", Country = "USA" },
                 DateReported = DateTime.Now,
                 Symptoms = new List<Symptom> { new Symptom { Id = 1, Name = "Cough", Description = "Persistent cough" } }

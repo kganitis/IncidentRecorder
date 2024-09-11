@@ -2,7 +2,7 @@
 {
     public class LocationCreateDTO
     {
-        public string City { get; set; }
-        public string Country { get; set; }
+        public required string City { get; set; }
+        public required string Country { get; set; }
     }
 }

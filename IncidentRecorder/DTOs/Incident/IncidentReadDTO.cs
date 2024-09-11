@@ -7,6 +7,6 @@
         public string? PatientName { get; set; }
         public string? Location { get; set; }
         public DateTime DateReported { get; set; } = DateTime.Now;
-        public List<string>? Symptoms { get; set; } = new List<string>();
+        public List<string>? Symptoms { get; set; } = [];
     }
 }

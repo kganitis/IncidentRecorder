@@ -2,6 +2,7 @@
 using IncidentRecorder.DTOs.Incident;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using IncidentRecorder.Models;
 
 namespace IncidentRecorder.Tests.Integration
 {
@@ -10,14 +11,6 @@ namespace IncidentRecorder.Tests.Integration
         private const string IncidentApiUrl = "/api/incident";
 
         public IncidentControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
-
-        private async Task<T> DeserializeResponse<T>(HttpResponseMessage response)
-        {
-            var content = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<T>(content);
-        }
-
-        private StringContent CreateContent(object data) => new StringContent(JsonConvert.SerializeObject(data), System.Text.Encoding.UTF8, "application/json");
 
         [Fact]
         public async Task GetIncidents_ReturnsOkResult_WithSeededData()
@@ -63,6 +56,8 @@ namespace IncidentRecorder.Tests.Integration
             Assert.Equal(diseaseName, incident.DiseaseName);
             Assert.Equal(patientName, incident.PatientName);
             Assert.Equal(location, incident.Location);
+            Assert.NotNull(incident.Symptoms);
+            Assert.Single(incident.Symptoms);
             Assert.Equal(firstSymptom, incident.Symptoms[0]);
         }
 
@@ -89,6 +84,8 @@ namespace IncidentRecorder.Tests.Integration
             Assert.Equal("COVID-19", createdIncident.DiseaseName);
             Assert.Equal("John Doe", createdIncident.PatientName);
             Assert.Equal("New York, USA", createdIncident.Location);
+            Assert.NotNull(createdIncident.Symptoms);
+            Assert.Single(createdIncident.Symptoms);
             Assert.Equal("Cough", createdIncident.Symptoms[0]);
         }
 
@@ -135,6 +132,7 @@ namespace IncidentRecorder.Tests.Integration
             Assert.Equal("COVID-19", updatedIncidentResult.DiseaseName);
             Assert.Equal("John Doe", updatedIncidentResult.PatientName);
             Assert.Equal("New York, USA", updatedIncidentResult.Location);
+            Assert.NotNull(updatedIncidentResult.Symptoms);
             Assert.Equal(2, updatedIncidentResult.Symptoms.Count);
             Assert.Contains("Cough", updatedIncidentResult.Symptoms);
             Assert.Contains("Nausea", updatedIncidentResult.Symptoms);
@@ -176,14 +174,12 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PostIncident_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
             // Arrange: Create an incident with missing required fields
-            var invalidIncident = new IncidentCreateDTO
-            {
-                DateReported = DateTime.Now,
-                SymptomIds = new List<int> { 1 }
-            };
+            var invalidIncident = "{\"patientId\":2,\"locationId\":2,\"dateReported\":\"2024-09-08T10:00:00Z\",\"symptomIds\":[2]}";
+
+            var content = new StringContent(invalidIncident, System.Text.Encoding.UTF8, "application/json");
 
             // Act
-            var response = await _client.PostAsync($"{IncidentApiUrl}/create", CreateContent(invalidIncident));
+            var response = await _client.PostAsync($"{IncidentApiUrl}/create", content);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -194,7 +190,7 @@ namespace IncidentRecorder.Tests.Integration
         [InlineData(1, 999, 1, new[] { 1 })]
         [InlineData(1, 1, 999, new[] { 1 })]
         [InlineData(1, 1, 1, new[] { 999 })]
-        public async Task PostIncident_ReturnsBadRequest_WhenNonExistingForeignKeyIsProvided(int diseaseId, int patientId, int locationId, int[] symptomIds)
+        public async Task PostIncident_ReturnsNotFound_WhenNonExistingForeignKeyIsProvided(int diseaseId, int patientId, int locationId, int[] symptomIds)
         {
             // Arrange: Create an incident with non-existing foreign key values
             var invalidIncident = new IncidentCreateDTO
@@ -210,7 +206,7 @@ namespace IncidentRecorder.Tests.Integration
             var response = await _client.PostAsync($"{IncidentApiUrl}/create", CreateContent(invalidIncident));
 
             // Assert
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         [Fact]
@@ -328,7 +324,6 @@ namespace IncidentRecorder.Tests.Integration
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.Contains("DiseaseId is required and must exist", responseContent);
         }
 
         [Fact]

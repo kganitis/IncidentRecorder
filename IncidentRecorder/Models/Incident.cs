@@ -5,8 +5,8 @@
         public int Id { get; set; }
 
         // Disease is required
-        public int DiseaseId { get; set; }
-        public Disease Disease { get; set; }
+        public required int DiseaseId { get; set; }
+        public required Disease Disease { get; set; }
 
         // Optional fields
         public int? PatientId { get; set; }

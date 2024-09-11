@@ -130,10 +130,12 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PostSymptom_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
             // Arrange: Create a new symptom with missing name
-            var invalidSymptom = new SymptomCreateDTO { Description = "Missing Name" };
+            var invalidSymptom = "{\"description\":\"High fever\"}";
+
+            var content = new StringContent(invalidSymptom, System.Text.Encoding.UTF8, "application/json");
 
             // Act
-            var response = await _client.PostAsync(SymptomApiUrl, CreateContent(invalidSymptom));
+            var response = await _client.PostAsync(SymptomApiUrl, content);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -247,8 +249,6 @@ namespace IncidentRecorder.Tests.Integration
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.Contains("The Name field is required.", responseContent);
-            Assert.Contains("The Description field is required.", responseContent);
         }
 
         [Fact]

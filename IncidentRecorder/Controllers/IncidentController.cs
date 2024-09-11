@@ -74,23 +74,30 @@ namespace IncidentRecorder.Controllers
 
         // Create a new incident
         [HttpPost("create")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<IncidentReadDTO>> PostIncident([FromBody] IncidentCreateDTO incidentCreateDto)
         {
             // Validate DiseaseId
-            if (incidentCreateDto.DiseaseId == 0 || !await _context.Diseases.AnyAsync(d => d.Id == incidentCreateDto.DiseaseId))
+            if (incidentCreateDto.DiseaseId == 0)
             {
-                return BadRequest("DiseaseId is required and must exist.");
+                return BadRequest("DiseaseId is required.");
             }
-
+            if (!await _context.Diseases.AnyAsync(d => d.Id == incidentCreateDto.DiseaseId))
+            {
+                return NotFound("DiseaseId must exist.");
+            }
+            
             // Validate optional foreign keys (PatientId, LocationId)
             if (incidentCreateDto.PatientId.HasValue && !await _context.Patients.AnyAsync(p => p.Id == incidentCreateDto.PatientId.Value))
             {
-                return BadRequest("Invalid PatientId.");
+                return NotFound("PatientId must exist.");
             }
 
             if (incidentCreateDto.LocationId.HasValue && !await _context.Locations.AnyAsync(l => l.Id == incidentCreateDto.LocationId.Value))
             {
-                return BadRequest("Invalid LocationId.");
+                return NotFound("LocationId must exist.");
             }
 
             // Validate SymptomIds
@@ -101,7 +108,7 @@ namespace IncidentRecorder.Controllers
 
                 if (invalidSymptomIds.Any())
                 {
-                    return BadRequest($"Invalid SymptomIds: {string.Join(", ", invalidSymptomIds)}");
+                    return NotFound($"SymptomIds must exist: {string.Join(", ", invalidSymptomIds)}");
                 }
             }
 
@@ -109,28 +116,27 @@ namespace IncidentRecorder.Controllers
             var incident = new Incident
             {
                 DiseaseId = incidentCreateDto.DiseaseId,
+                Disease = (await _context.Diseases.FindAsync(incidentCreateDto.DiseaseId))!,
                 PatientId = incidentCreateDto.PatientId,
                 LocationId = incidentCreateDto.LocationId,
                 DateReported = incidentCreateDto.DateReported ?? DateTime.Now,
                 Symptoms = incidentCreateDto.SymptomIds != null && incidentCreateDto.SymptomIds.Any()
                     ? await _context.Symptoms.Where(s => incidentCreateDto.SymptomIds.Contains(s.Id)).ToListAsync()
-                    : new List<Symptom>()
+                    : []
             };
 
             _context.Incidents.Add(incident);
             await _context.SaveChangesAsync();
 
             // Map the created incident to a Read DTO
+            Patient? patient = await _context.Patients.FindAsync(incident.PatientId);
+            Location? location = await _context.Locations.FindAsync(incident.LocationId);
             var incidentReadDto = new IncidentReadDTO
             {
                 Id = incident.Id,
-                DiseaseName = (await _context.Diseases.FindAsync(incident.DiseaseId))?.Name,
-                PatientName = (await _context.Patients.FindAsync(incident.PatientId)) != null
-                    ? $"{(await _context.Patients.FindAsync(incident.PatientId)).FirstName} {(await _context.Patients.FindAsync(incident.PatientId)).LastName}"
-                    : "Unknown",
-                Location = (await _context.Locations.FindAsync(incident.LocationId)) != null
-                    ? $"{(await _context.Locations.FindAsync(incident.LocationId)).City}, {(await _context.Locations.FindAsync(incident.LocationId)).Country}"
-                    : "Unknown",
+                DiseaseName = incident.Disease.Name,
+                PatientName = patient != null ? $"{patient.FirstName} {patient.LastName}" : "Unknown",
+                Location = location != null ? $"{location.City}, {location.Country}" : "Unknown",
                 DateReported = incident.DateReported,
                 Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
             };
@@ -140,27 +146,29 @@ namespace IncidentRecorder.Controllers
 
         // Update incident
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PutIncident(int id, [FromBody] IncidentUpdateDTO incidentUpdateDto)
         {
             // Validate foreign keys exist
             if (incidentUpdateDto.DiseaseId.HasValue && !await _context.Diseases.AnyAsync(d => d.Id == incidentUpdateDto.DiseaseId))
             {
-                return BadRequest("Invalid DiseaseId.");
+                return NotFound("DisaseId must exist.");
             }
             if (incidentUpdateDto.PatientId.HasValue && !await _context.Patients.AnyAsync(p => p.Id == incidentUpdateDto.PatientId.Value))
             {
-                return BadRequest("Invalid PatientId.");
+                return NotFound("PatientId must exist.");
             }
             if (incidentUpdateDto.LocationId.HasValue && !await _context.Locations.AnyAsync(l => l.Id == incidentUpdateDto.LocationId.Value))
             {
-                return BadRequest("Invalid LocationId.");
+                return NotFound("LocationId must exist.");
             }
             if (incidentUpdateDto.SymptomIds?.Any() == true)
             {
                 var invalidSymptomIds = incidentUpdateDto.SymptomIds.Except(await _context.Symptoms.Select(s => s.Id).ToListAsync()).ToList();
-                if (invalidSymptomIds.Any())
+                if (invalidSymptomIds.Count != 0)
                 {
-                    return BadRequest($"Invalid SymptomIds: {string.Join(", ", invalidSymptomIds)}");
+                    return NotFound($"SymptomIds must exist: {string.Join(", ", invalidSymptomIds)}");
                 }
             }
 
@@ -209,6 +217,8 @@ namespace IncidentRecorder.Controllers
 
         // Delete an incident
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteIncident(int id)
         {
             var incident = await _context.Incidents.FindAsync(id);
@@ -230,6 +240,7 @@ namespace IncidentRecorder.Controllers
 
         // Get all incidents (lightweight version for listing)
         [HttpGet("list")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<IncidentListDTO>>> GetIncidentsList()
         {
             var incidents = await _context.Incidents
@@ -252,6 +263,8 @@ namespace IncidentRecorder.Controllers
 
         // Get incident details (full version)
         [HttpGet("details/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<IncidentDetailsDTO>> GetIncidentDetails(int id)
         {
             var incident = await _context.Incidents
@@ -272,8 +285,8 @@ namespace IncidentRecorder.Controllers
                 DiseaseName = incident.Disease.Name,
                 DiseaseDescription = incident.Disease.Description,
                 PatientName = $"{incident.Patient?.FirstName} {incident.Patient?.LastName}",
-                PatientDateOfBirth = incident.Patient.DateOfBirth,
-                PatientContactInfo = incident.Patient.ContactInfo,
+                PatientDateOfBirth = incident.Patient?.DateOfBirth,
+                PatientContactInfo = incident.Patient?.ContactInfo,
                 Location = $"{incident.Location?.City}, {incident.Location?.Country}",
                 DateReported = incident.DateReported,
                 Symptoms = incident.Symptoms.Select(s => s.Name).ToList()
@@ -281,7 +294,5 @@ namespace IncidentRecorder.Controllers
 
             return Ok(incidentDto);
         }
-
     }
-
 }

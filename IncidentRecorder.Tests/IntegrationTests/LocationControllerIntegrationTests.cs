@@ -132,12 +132,15 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PostLocation_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
             // Arrange: Create new locations with missing fields
-            var invalidLocation1 = new LocationCreateDTO { Country = "Missing City" };
-            var invalidLocation2 = new LocationCreateDTO { City = "Missing Country" };
+            var invalidLocation1 = "{\"city\":\"Athens\"}";
+            var invalidLocation2 = "{\"country\":\"Greece\"}";
+
+            var content1 = new StringContent(invalidLocation1, System.Text.Encoding.UTF8, "application/json");
+            var content2 = new StringContent(invalidLocation2, System.Text.Encoding.UTF8, "application/json");
 
             // Act
-            var response1 = await _client.PostAsync(LocationApiUrl, CreateContent(invalidLocation1));
-            var response2 = await _client.PostAsync(LocationApiUrl, CreateContent(invalidLocation2));
+            var response1 = await _client.PostAsync(LocationApiUrl, content1);
+            var response2 = await _client.PostAsync(LocationApiUrl, content2);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response1.StatusCode);
@@ -259,8 +262,6 @@ namespace IncidentRecorder.Tests.Integration
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.Contains("The City field is required.", responseContent);
-            Assert.Contains("The Country field is required.", responseContent);
         }
 
         [Fact]
