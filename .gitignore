@@ -401,3 +401,4 @@ FodyWeavers.xsd
 /IncidentRecorder/._incidentrecorder.db
 /IncidentRecorder/._incidentrecorder.db-wal
 /Plan.txt
+/IncidentRecorder.Tests/Plan.txt
