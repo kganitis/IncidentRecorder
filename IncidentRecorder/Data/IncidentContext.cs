@@ -58,6 +58,11 @@ namespace IncidentRecorder.Data
             modelBuilder.Entity<Location>()
                 .HasIndex(l => new { l.City, l.Country })
                 .IsUnique();
+
+            // Add unique index to the Symptom.Name column
+            modelBuilder.Entity<Symptom>()
+                .HasIndex(d => d.Name)
+                .IsUnique();
         }
     }
 }
