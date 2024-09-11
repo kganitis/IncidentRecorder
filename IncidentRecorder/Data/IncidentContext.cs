@@ -16,48 +16,53 @@ namespace IncidentRecorder.Data
             // Many-to-many relationship between Incident and Symptom
             modelBuilder.Entity<Incident>()
                 .HasMany(i => i.Symptoms)
-                .WithMany();
+                .WithMany()
+                .UsingEntity(j => j.ToTable("IncidentSymptom"));
 
-            // Disease is required (non-nullable)
+            // Configure required relationship for Disease
             modelBuilder.Entity<Incident>()
                 .HasOne(i => i.Disease)
                 .WithMany()
                 .HasForeignKey(i => i.DiseaseId)
                 .IsRequired();
 
-            // Patient is optional (nullable)
+            // Configure optional relationship for Patient
             modelBuilder.Entity<Incident>()
                 .HasOne(i => i.Patient)
                 .WithMany()
                 .HasForeignKey(i => i.PatientId)
-                .OnDelete(DeleteBehavior.SetNull);  // Allow nullable foreign key
+                .OnDelete(DeleteBehavior.SetNull);  // Patient can be nullable
 
-            // Location is optional (nullable)
+            // Configure optional relationship for Location
             modelBuilder.Entity<Incident>()
                 .HasOne(i => i.Location)
                 .WithMany()
                 .HasForeignKey(i => i.LocationId)
-                .OnDelete(DeleteBehavior.SetNull);  // Allow nullable foreign key
+                .OnDelete(DeleteBehavior.SetNull);  // Location can be nullable
 
-            // Add unique index to the Disease.Name column
+            // Add unique index to Disease.Name
             modelBuilder.Entity<Disease>()
                 .HasIndex(d => d.Name)
-                .IsUnique();
+                .IsUnique()
+                .HasDatabaseName("IX_Unique_Disease_Name");
 
-            // Add unique index to the Patient.NIN column
+            // Add unique index to Patient.NIN
             modelBuilder.Entity<Patient>()
                 .HasIndex(p => p.NIN)
-                .IsUnique();
+                .IsUnique()
+                .HasDatabaseName("IX_Unique_Patient_NIN");
 
-            // Add unique index to the combination of City and Country columns
+            // Add unique index to Location.City + Country
             modelBuilder.Entity<Location>()
                 .HasIndex(l => new { l.City, l.Country })
-                .IsUnique();
+                .IsUnique()
+                .HasDatabaseName("IX_Unique_Location_City_Country");
 
-            // Add unique index to the Symptom.Name column
+            // Add unique index to Symptom.Name
             modelBuilder.Entity<Symptom>()
-                .HasIndex(d => d.Name)
-                .IsUnique();
+                .HasIndex(s => s.Name)
+                .IsUnique()
+                .HasDatabaseName("IX_Unique_Symptom_Name");
         }
     }
 }

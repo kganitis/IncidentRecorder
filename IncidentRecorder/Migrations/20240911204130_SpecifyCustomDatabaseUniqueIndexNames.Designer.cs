@@ -3,6 +3,7 @@ using System;
 using IncidentRecorder.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IncidentRecorder.Migrations
 {
     [DbContext(typeof(IncidentContext))]
-    partial class IncidentContextModelSnapshot : ModelSnapshot
+    [Migration("20240911204130_SpecifyCustomDatabaseUniqueIndexNames")]
+    partial class SpecifyCustomDatabaseUniqueIndexNames
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.8");
