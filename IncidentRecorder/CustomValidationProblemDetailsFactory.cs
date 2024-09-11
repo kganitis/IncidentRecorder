@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace IncidentRecorder
 {
-    public class CustomValidationProblemDetailsFactory
+    public partial class CustomValidationProblemDetailsFactory
     {
         public static ValidationProblemDetails CreateProblemDetails(ActionContext context)
         {
@@ -26,20 +26,20 @@ namespace IncidentRecorder
                 {
                     // Sanitize error messages
                     var errorMessage = error.ErrorMessage.Contains("JSON deserialization")
-                        ? Regex.Replace(error.ErrorMessage, @"JSON deserialization for type '.*?' ", "JSON deserialization ")
+                        ? JsonDeserializationRegex().Replace(error.ErrorMessage, "JSON deserialization ")
                         : error.ErrorMessage.Contains("Dto") ? null : error.ErrorMessage;
 
                     // Skip null or empty messages
                     if (!string.IsNullOrEmpty(errorMessage))
                     {
                         // Append the error messages to the same key if it already exists
-                        if (errors.ContainsKey(sanitizedKey))
+                        if (errors.TryGetValue(sanitizedKey, out var errorList))
                         {
-                            errors[sanitizedKey].Add(errorMessage);
+                            errorList.Add(errorMessage);
                         }
                         else
                         {
-                            errors[sanitizedKey] = new List<string> { errorMessage };
+                            errors[sanitizedKey] = [errorMessage];
                         }
                     }
                 }
@@ -50,5 +50,8 @@ namespace IncidentRecorder
 
             return problemDetails;
         }
+
+        [GeneratedRegex(@"JSON deserialization for type '.*?' ")]
+        private static partial Regex JsonDeserializationRegex();
     }
 }
