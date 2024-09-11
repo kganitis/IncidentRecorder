@@ -4,11 +4,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace IncidentRecorder.Tests.Integration
 {
-    public class SymptomControllerIntegrationTests : BaseIntegrationTest
+    public class SymptomControllerIntegrationTests(WebApplicationFactory<Program> factory) : BaseIntegrationTest(factory)
     {
         private const string SymptomApiUrl = "/api/symptom";
-
-        public SymptomControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
 
         [Fact]
         public async Task GetSymptoms_ReturnsOkResult_WithSeededData()
@@ -101,7 +99,7 @@ namespace IncidentRecorder.Tests.Integration
             Assert.Equal("Updated Description", updatedSymptomResult.Description);
 
             // Delete the updated symptom to clean up
-            var deleteResponse = await _client.DeleteAsync($"{SymptomApiUrl}/{createdId}");
+            await _client.DeleteAsync($"{SymptomApiUrl}/{createdId}");
         }
 
         [Fact]
@@ -245,7 +243,6 @@ namespace IncidentRecorder.Tests.Integration
 
             // Act
             var response = await _client.PostAsync(SymptomApiUrl, content);
-            var responseContent = await response.Content.ReadAsStringAsync();
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

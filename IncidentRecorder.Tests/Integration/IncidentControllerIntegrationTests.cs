@@ -1,16 +1,25 @@
 ﻿using System.Net;
 using IncidentRecorder.DTOs.Incident;
-using Newtonsoft.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 using IncidentRecorder.Models;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace IncidentRecorder.Tests.Integration
 {
-    public class IncidentControllerIntegrationTests : BaseIntegrationTest
+    public class IncidentControllerIntegrationTests(WebApplicationFactory<Program> factory) : BaseIntegrationTest(factory)
     {
         private const string IncidentApiUrl = "/api/incident";
 
-        public IncidentControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
+        private void AssertIncident(IncidentReadDTO actual, int id, string diseaseName, string patientName, string location, List<string> symptoms)
+        {
+            Assert.NotNull(actual);
+            Assert.Equal(id, actual.Id);
+            Assert.Equal(diseaseName, actual.DiseaseName);
+            Assert.Equal(patientName, actual.PatientName);
+            Assert.Equal(location, actual.Location);
+            Assert.NotNull(actual.Symptoms);
+            Assert.Equal(symptoms, actual.Symptoms);
+
+        }
 
         [Fact]
         public async Task GetIncidents_ReturnsOkResult_WithSeededData()
@@ -22,71 +31,68 @@ namespace IncidentRecorder.Tests.Integration
             response.EnsureSuccessStatusCode();
             var incidents = await DeserializeResponse<List<IncidentReadDTO>>(response);
             Assert.NotNull(incidents);
-
-            var expectedIncidents = new[]
+            for (int i = 0; i < SeededIncidents.Count; i++)
             {
-                new { Id = 1, DiseaseName = "COVID-19", PatientName = "John Doe" },
-                // TODO check for all the incidents
-                new { Id = 6, DiseaseName = "Chickenpox", PatientName = "Liam O'Reilly" }
-            };
+                var actual = incidents[i];
+                var expected = SeededIncidents[i];
 
-            foreach (var expected in expectedIncidents)
-            {
-                Assert.Contains(incidents, i => i.Id == expected.Id && i.DiseaseName == expected.DiseaseName && i.PatientName == expected.PatientName);
+                AssertIncident(actual,
+                   expected.Id,
+                   expected.Disease.Name,
+                   $"{expected.Patient?.FirstName} {expected.Patient?.LastName}",
+                   $"{expected.Location?.City}, {expected.Location?.Country}",
+                   expected.Symptoms.Select(s => s.Name).ToList());
             }
         }
 
-        [Theory]
-        [InlineData(1, "COVID-19", "John Doe", "New York, USA", "Cough")]
-        [InlineData(2, "Gastroenteritis", "Alex Smith", "Toronto, Canada", "Nausea")]
-        [InlineData(3, "Malaria", "Maria Gonzalez", "Madrid, Spain", "Chills")]
-        [InlineData(4, "Tuberculosis", "John Doe", "London, UK", "Coughing up blood")]
-        [InlineData(5, "Dengue Fever", "Emma Brown", "Sydney, Australia", "Joint Pain")]
-        [InlineData(6, "Chickenpox", "Liam O'Reilly", "Dublin, Ireland", "Rash")]
-        public async Task GetIncidentById_ReturnsOkResult_WhenIncidentExists(int id, string diseaseName, string patientName, string location, string firstSymptom)
+        [Fact]
+        public async Task GetIncidentById_ReturnsOkResult_WhenIncidentExists()
         {
             // Act
-            var response = await _client.GetAsync($"{IncidentApiUrl}/{id}");
+            var response = await _client.GetAsync($"{IncidentApiUrl}/{SeededIncidents[0].Id}");
 
             // Assert
             response.EnsureSuccessStatusCode();
-            var incident = await DeserializeResponse<IncidentReadDTO>(response);
-            Assert.NotNull(incident);
-            Assert.Equal(id, incident.Id);
-            Assert.Equal(diseaseName, incident.DiseaseName);
-            Assert.Equal(patientName, incident.PatientName);
-            Assert.Equal(location, incident.Location);
-            Assert.NotNull(incident.Symptoms);
-            Assert.Single(incident.Symptoms);
-            Assert.Equal(firstSymptom, incident.Symptoms[0]);
+
+            var actual = await DeserializeResponse<IncidentReadDTO>(response);
+            var expected = SeededIncidents[0];
+
+            AssertIncident(actual,
+                expected.Id,
+                expected.Disease.Name,
+                $"{expected.Patient?.FirstName} {expected.Patient?.LastName}",
+                $"{expected.Location?.City}, {expected.Location?.Country}",
+                expected.Symptoms.Select(s => s.Name).ToList());
         }
 
         [Fact]
         public async Task PostIncident_CreatesNewIncident()
         {
-            // Arrange: Prepare new incident data
+            // Arrange: Prepare new incident data (copying the first seeded incident)
             var newIncident = new IncidentCreateDTO
             {
                 DiseaseId = 1,
                 PatientId = 1,
                 LocationId = 1,
                 DateReported = DateTime.Now,
-                SymptomIds = new List<int> { 1 }
+                SymptomIds = [1]
             };
 
             // Act
             var response = await _client.PostAsync($"{IncidentApiUrl}/create", CreateContent(newIncident));
 
-            // Assert
+            // Assert: The expected incident should be the same as the first seeded incident, but with a new ID
             response.EnsureSuccessStatusCode();
+
             var createdIncident = await DeserializeResponse<IncidentReadDTO>(response);
-            Assert.NotNull(createdIncident);
-            Assert.Equal("COVID-19", createdIncident.DiseaseName);
-            Assert.Equal("John Doe", createdIncident.PatientName);
-            Assert.Equal("New York, USA", createdIncident.Location);
-            Assert.NotNull(createdIncident.Symptoms);
-            Assert.Single(createdIncident.Symptoms);
-            Assert.Equal("Cough", createdIncident.Symptoms[0]);
+            var expectedId = createdIncident.Id;
+
+            AssertIncident(createdIncident,
+                expectedId,
+                SeededDiseases[0].Name,
+                $"{SeededPatients[0].FirstName} {SeededPatients[0].LastName}",
+                $"{SeededLocations[0].City}, {SeededLocations[0].Country}",
+                [SeededSymptoms[0].Name]);
         }
 
         [Fact]
@@ -99,7 +105,7 @@ namespace IncidentRecorder.Tests.Integration
                 PatientId = 2,
                 LocationId = 3,
                 DateReported = DateTime.Now,
-                SymptomIds = new List<int> { 4 }
+                SymptomIds = [4]
             };
 
             // Get the ID of the newly created incident
@@ -115,7 +121,7 @@ namespace IncidentRecorder.Tests.Integration
                 PatientId = 1,
                 LocationId = 1,
                 DateReported = DateTime.Now.AddDays(-1),
-                SymptomIds = new List<int> { 1, 2 }
+                SymptomIds = [1, 2]
             };
 
             // Act
@@ -128,17 +134,15 @@ namespace IncidentRecorder.Tests.Integration
             var getResponse = await _client.GetAsync($"{IncidentApiUrl}/{createdId}");
             var updatedIncidentResult = await DeserializeResponse<IncidentReadDTO>(getResponse);
 
-            Assert.NotNull(updatedIncidentResult);
-            Assert.Equal("COVID-19", updatedIncidentResult.DiseaseName);
-            Assert.Equal("John Doe", updatedIncidentResult.PatientName);
-            Assert.Equal("New York, USA", updatedIncidentResult.Location);
-            Assert.NotNull(updatedIncidentResult.Symptoms);
-            Assert.Equal(2, updatedIncidentResult.Symptoms.Count);
-            Assert.Contains("Cough", updatedIncidentResult.Symptoms);
-            Assert.Contains("Nausea", updatedIncidentResult.Symptoms);
+            AssertIncident(updatedIncidentResult,
+               createdId,
+               SeededDiseases[0].Name,
+               $"{SeededPatients[0].FirstName} {SeededPatients[0].LastName}",
+               $"{SeededLocations[0].City}, {SeededLocations[0].Country}",
+               [SeededSymptoms[0].Name, SeededSymptoms[1].Name]);
 
             // Delete the updated incident to clean up
-            var deleteResponse = await _client.DeleteAsync($"{IncidentApiUrl}/{createdId}");
+            await _client.DeleteAsync($"{IncidentApiUrl}/{createdId}");
         }
 
         [Fact]
@@ -151,7 +155,7 @@ namespace IncidentRecorder.Tests.Integration
                 PatientId = 2,
                 LocationId = 3,
                 DateReported = DateTime.Now,
-                SymptomIds = new List<int> { 4 }
+                SymptomIds = [4]
             };
 
             var postResponse = await _client.PostAsync($"{IncidentApiUrl}/create", CreateContent(newIncident));
@@ -199,7 +203,7 @@ namespace IncidentRecorder.Tests.Integration
                 PatientId = patientId,
                 LocationId = locationId,
                 DateReported = DateTime.Now,
-                SymptomIds = symptomIds.ToList()
+                SymptomIds = [.. symptomIds]
             };
 
             // Act
@@ -320,7 +324,6 @@ namespace IncidentRecorder.Tests.Integration
 
             // Act
             var response = await _client.PostAsync($"{IncidentApiUrl}/create", content);
-            var responseContent = await response.Content.ReadAsStringAsync();
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

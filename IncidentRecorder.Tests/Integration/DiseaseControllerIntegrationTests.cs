@@ -8,6 +8,14 @@ namespace IncidentRecorder.Tests.Integration
     {
         private const string DiseaseApiUrl = "/api/disease";
 
+        private void AssertDisease(DiseaseDTO disease, int id, string name, string description)
+        {
+            Assert.NotNull(disease);
+            Assert.Equal(id, disease.Id);
+            Assert.Equal(name, disease.Name);
+            Assert.Equal(description, disease.Description);
+        }
+
         [Fact]
         public async Task GetDiseases_ReturnsOkResult_WithSeededData()
         {
@@ -19,36 +27,24 @@ namespace IncidentRecorder.Tests.Integration
             var diseases = await DeserializeResponse<List<DiseaseDTO>>(response);
             Assert.NotNull(diseases);
 
-            var expectedDiseases = new[]
+            for (int i = 0; i < SeededDiseases.Count; i++)
             {
-                new { Id = 1, Name = "COVID-19", Description = "Coronavirus Disease" },
-                // TODO check for all the diseases
-                new { Id = 6, Name = "Chickenpox", Description = "Highly contagious viral infection causing an itchy rash" }
-            };
-
-            foreach (var expected in expectedDiseases)
-            {
-                Assert.Contains(diseases, i => i.Id == expected.Id && i.Name == expected.Name && i.Description == expected.Description);
+                var actual = diseases[i];
+                var expected = SeededDiseases[i];
+                AssertDisease(actual, expected.Id, expected.Name, expected.Description);
             }
         }
 
-        [Theory]
-        [InlineData(1, "COVID-19")]
-        [InlineData(2, "Gastroenteritis")]
-        [InlineData(3, "Malaria")]
-        [InlineData(4, "Tuberculosis")]
-        [InlineData(5, "Dengue Fever")]
-        [InlineData(6, "Chickenpox")]
-        public async Task GetDiseaseById_ReturnsOkResult_WhenDiseaseExists(int id, string name)
+        [Fact]
+        public async Task GetDiseaseById_ReturnsOkResult_WhenDiseaseExists()
         {
             // Act
-            var response = await _client.GetAsync($"{DiseaseApiUrl}/{id}");
+            var response = await _client.GetAsync($"{DiseaseApiUrl}/{SeededDiseases[0].Id}");
 
             // Assert
-            var disease = await DeserializeResponse<DiseaseDTO>(response);
-            Assert.NotNull(disease);
-            Assert.Equal(id, disease.Id);
-            Assert.Equal(name, disease.Name);
+            var actual = await DeserializeResponse<DiseaseDTO>(response);
+            var expected = SeededDiseases[0];
+            AssertDisease(actual, expected.Id, expected.Name, expected.Description);
         }
 
         [Fact]
@@ -64,9 +60,8 @@ namespace IncidentRecorder.Tests.Integration
             response.EnsureSuccessStatusCode();
             var createdDisease = await DeserializeResponse<DiseaseDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            Assert.NotNull(createdDisease);
-            Assert.Equal("Flu H1N1", createdDisease.Name);
-            Assert.Equal("H1N1 virus", createdDisease.Description);
+            var expectedId = createdDisease.Id;
+            AssertDisease(createdDisease, expectedId, newDisease.Name, newDisease.Description);
         }
 
         [Fact]
@@ -94,9 +89,7 @@ namespace IncidentRecorder.Tests.Integration
             var getResponse = await _client.GetAsync($"{DiseaseApiUrl}/{createdId}");
             var updatedDiseaseResult = await DeserializeResponse<DiseaseDTO>(getResponse);
 
-            Assert.NotNull(updatedDiseaseResult);
-            Assert.Equal("Updated Flu", updatedDiseaseResult.Name);
-            Assert.Equal("Updated flu description", updatedDiseaseResult.Description);
+            AssertDisease(updatedDiseaseResult, createdId, updatedDisease.Name, updatedDisease.Description);
 
             // Delete the updated disease to clean up
             await _client.DeleteAsync($"{DiseaseApiUrl}/{createdId}");
@@ -105,7 +98,7 @@ namespace IncidentRecorder.Tests.Integration
         [Fact]
         public async Task DeleteDisease_DeletesExistingDisease()
         {
-            // Arrange: Create a new disease to get its ID
+            // Arrange: Create a new disease to delete
             var newDisease = new DiseaseCreateDTO { Name = "Test Disease", Description = "Test Description" };
 
             var postResponse = await _client.PostAsync(DiseaseApiUrl, CreateContent(newDisease));
@@ -113,7 +106,7 @@ namespace IncidentRecorder.Tests.Integration
             var createdDisease = await DeserializeResponse<DiseaseDTO>(postResponse);
             var createdId = createdDisease.Id;
 
-            // Act
+            // Act: Delete the newly created disease
             var deleteResponse = await _client.DeleteAsync($"{DiseaseApiUrl}/{createdId}");
 
             // Assert
@@ -243,7 +236,6 @@ namespace IncidentRecorder.Tests.Integration
 
             // Act
             var response = await _client.PostAsync(DiseaseApiUrl, content);
-            await response.Content.ReadAsStringAsync();
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

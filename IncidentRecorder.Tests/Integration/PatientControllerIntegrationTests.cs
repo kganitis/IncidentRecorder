@@ -4,11 +4,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace IncidentRecorder.Tests.Integration
 {
-    public class PatientControllerIntegrationTests : BaseIntegrationTest
+    public class PatientControllerIntegrationTests(WebApplicationFactory<Program> factory) : BaseIntegrationTest(factory)
     {
         private const string PatientApiUrl = "/api/patient";
-
-        public PatientControllerIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
 
         [Fact]
         public async Task GetPatients_ReturnsOkResult_WithSeededData()
@@ -330,7 +328,6 @@ namespace IncidentRecorder.Tests.Integration
 
             // Act
             var response = await _client.PostAsync(PatientApiUrl, content);
-            var responseContent = await response.Content.ReadAsStringAsync();
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
