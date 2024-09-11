@@ -1,31 +1,60 @@
+using IncidentRecorder;
 using IncidentRecorder.Data;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers();
-
-// Add DbContext with SQLite
-builder.Services.AddDbContext<IncidentContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("IncidentDatabase")));
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
+ConfigureMiddleware(app);
 
 app.Run();
+
+
+void ConfigureServices(IServiceCollection services, ConfigurationManager configuration)
+{
+    services.AddControllers();
+
+    // Add DbContext with SQLite
+    services.AddDbContext<IncidentContext>(options =>
+        options.UseSqlite(configuration.GetConnectionString("IncidentDatabase")));
+
+    // Configure custom validation error handling
+    services.Configure<ApiBehaviorOptions>(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var problemDetails = CustomValidationProblemDetailsFactory.CreateProblemDetails(context);
+            return new BadRequestObjectResult(problemDetails)
+            {
+                ContentTypes = { "application/problem+json" }
+            };
+        };
+    });
+
+    // Add API documentation (Swagger)
+    services.AddEndpointsApiExplorer();
+    services.AddSwaggerGen();
+}
+
+void ConfigureMiddleware(WebApplication app)
+{
+    // Configure Swagger for API documentation
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    // Global exception handling middleware
+    app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthorization();
+
+    app.MapControllers();
+}
