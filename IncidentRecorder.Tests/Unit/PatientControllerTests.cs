@@ -29,7 +29,12 @@ namespace IncidentRecorder.Tests.Unit
 
             var actionResult = Assert.IsType<OkObjectResult>(result.Result);
             var patientDTO = Assert.IsType<PatientDTO>(actionResult.Value);
-            Assert.Equal("John", patientDTO.FirstName);
+            Assert.Equal("000000001", patientDTO.NIN);
+            Assert.Equal("Kostas", patientDTO.FirstName);
+            Assert.Equal("Ganitis", patientDTO.LastName);
+            Assert.Equal(new DateTime(1992, 1, 1), patientDTO.DateOfBirth);
+            Assert.Equal("Male", patientDTO.Gender);
+            Assert.Equal("k.ganitis@gmail.com", patientDTO.ContactInfo);
         }
 
         // Test: Create a new patient
@@ -42,10 +47,10 @@ namespace IncidentRecorder.Tests.Unit
             // Arrange: Create a new patient
             var newPatient = new PatientCreateDTO
             {
-                NIN = "000000002",
+                NIN = "000000003",
                 FirstName = "Jane",
                 LastName = "Doe",
-                DateOfBirth = new System.DateTime(1990, 5, 14),
+                DateOfBirth = new DateTime(1990, 5, 14),
                 ContactInfo = "jane.doe@example.com",
                 Gender = "Female"
             };
@@ -117,6 +122,32 @@ namespace IncidentRecorder.Tests.Unit
             var result = await controller.DeletePatient(999);
 
             Assert.IsType<NotFoundResult>(result);
+        }
+
+        // Test: Get all patients
+        [Fact]
+        public async Task GetPatients_ReturnsListOfPatientDTOs()
+        {
+            var context = GetInMemoryDbContext("TestDb8");
+            var controller = new PatientController(context);
+
+            var result = await controller.GetPatients();
+
+            var actionResult = Assert.IsType<OkObjectResult>(result.Result);
+            var patients = Assert.IsType<List<PatientDTO>>(actionResult.Value);
+            Assert.Equal(2, patients.Count);
+            Assert.Equal("000000001", patients[0].NIN);
+            Assert.Equal("Kostas", patients[0].FirstName);
+            Assert.Equal("Ganitis", patients[0].LastName);
+            Assert.Equal(new DateTime(1992, 1, 1), patients[0].DateOfBirth);
+            Assert.Equal("Male", patients[0].Gender);
+            Assert.Equal("k.ganitis@gmail.com", patients[0].ContactInfo);
+            Assert.Equal("000000002", patients[1].NIN);
+            Assert.Equal("Efthymios", patients[1].FirstName);
+            Assert.Equal("Alepis", patients[1].LastName);
+            Assert.Equal(new DateTime(1980, 2, 2), patients[1].DateOfBirth);
+            Assert.Equal("Male", patients[1].Gender);
+            Assert.Equal("e.alepis@unipi.gr", patients[1].ContactInfo);
         }
     }
 }

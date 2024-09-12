@@ -17,8 +17,10 @@ namespace IncidentRecorder.Tests.Unit
 
             var actionResult = Assert.IsType<OkObjectResult>(result.Result);
             var symptoms = Assert.IsType<List<SymptomDTO>>(actionResult.Value);
-            Assert.Single(symptoms);
+            Assert.Equal(3, symptoms.Count);
             Assert.Equal("Cough", symptoms[0].Name);
+            Assert.Equal("Fever", symptoms[1].Name);
+            Assert.Equal("Nausea", symptoms[2].Name);
         }
 
         // Test: Get a single symptom by ID
@@ -76,8 +78,8 @@ namespace IncidentRecorder.Tests.Unit
 
             var updateSymptom = new SymptomUpdateDTO
             {
-                Name = "Fever",
-                Description = "Mild fever"
+                Name = "Mild Fever",
+                Description = "Moderately high body temperature"
             };
 
             var result = await controller.PutSymptom(1, updateSymptom);

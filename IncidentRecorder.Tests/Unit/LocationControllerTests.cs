@@ -17,8 +17,11 @@ namespace IncidentRecorder.Tests.Unit
 
             var actionResult = Assert.IsType<OkObjectResult>(result.Result);
             var locations = Assert.IsType<List<LocationDTO>>(actionResult.Value);
-            Assert.Single(locations);
-            Assert.Equal("New York", locations[0].City);
+            Assert.Equal(2, locations.Count);
+            Assert.Equal("Athens", locations[0].City);
+            Assert.Equal("Greece", locations[0].Country);
+            Assert.Equal("Piraeus", locations[1].City);
+            Assert.Equal("Greece", locations[1].Country);
         }
 
         // Test: Get a single location by ID
@@ -32,7 +35,8 @@ namespace IncidentRecorder.Tests.Unit
 
             var actionResult = Assert.IsType<OkObjectResult>(result.Result);
             var location = Assert.IsType<LocationDTO>(actionResult.Value);
-            Assert.Equal("New York", location.City);
+            Assert.Equal("Athens", location.City);
+            Assert.Equal("Greece", location.Country);
         }
 
         // Test: Get a single location by ID (not found)
@@ -65,6 +69,7 @@ namespace IncidentRecorder.Tests.Unit
             var actionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
             var createdLocation = Assert.IsType<LocationDTO>(actionResult.Value);
             Assert.Equal("Berlin", createdLocation.City);
+            Assert.Equal("Germany", createdLocation.Country);
         }
 
         // Test: Update an existing location

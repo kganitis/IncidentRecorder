@@ -93,22 +93,22 @@ namespace IncidentRecorder.Tests.Integration
 
         protected static List<Patient> SeededPatients =>
         [
-            new() { Id = 1, NIN = "000000001", FirstName = "John", LastName = "Doe", DateOfBirth = new DateTime(1960, 1, 1), ContactInfo = "john.doe@example.com", Gender = "Male" },
-            new() { Id = 2, NIN = "000000002", FirstName = "Alex", LastName = "Smith", DateOfBirth = new DateTime(1970, 2, 2), ContactInfo = "alex.smith@healthmail.com", Gender = "Male" },
-            new() { Id = 3, NIN = "000000003", FirstName = "Maria", LastName = "Gonzalez", DateOfBirth = new DateTime(1980, 3, 3), ContactInfo = "maria.gonzalez@medmail.com", Gender = "Female" },
-            new() { Id = 4, NIN = "000000004", FirstName = "John", LastName = "Doe", DateOfBirth = new DateTime(1990, 4, 4), ContactInfo = "john.doe@medemail.com", Gender = "Male" },
-            new() { Id = 5, NIN = "000000005", FirstName = "Emma", LastName = "Brown", DateOfBirth = new DateTime(2000, 5, 5), ContactInfo = "emma.brown@health.com", Gender = "Female" },
-            new() { Id = 6, NIN = "000000006", FirstName = "Liam", LastName = "O'Reilly", DateOfBirth = new DateTime(2010, 6, 6), ContactInfo = "liam.oreilly@medservice.com", Gender = "Male" }
+            new() { Id = 1, NIN = "000000001", FirstName = "Kostas", LastName = "Ganitis", DateOfBirth = new DateTime(1992, 1, 1), ContactInfo = "k.ganitis@gmail.com", Gender = "Male" },
+            new() { Id = 2, NIN = "000000002", FirstName = "Efthymis", LastName = "Alepis", DateOfBirth = new DateTime(1980, 2, 2), ContactInfo = "e.alepis@unipi.gr", Gender = "Male" },
+            new() { Id = 3, NIN = "000000003", FirstName = "Maria", LastName = "Konstantinou", DateOfBirth = new DateTime(1980, 3, 3), ContactInfo = "maria.kon@hotmail.com", Gender = "Female" },
+            new() { Id = 4, NIN = "000000004", FirstName = "Giannis", LastName = "Nikolaou", DateOfBirth = new DateTime(1990, 4, 4), ContactInfo = "john.nikolaou@yahoo.gr", Gender = "Male" },
+            new() { Id = 5, NIN = "000000005", FirstName = "Emmanouela", LastName = "Giannakidi", DateOfBirth = new DateTime(2000, 5, 5), ContactInfo = "emma.giannak@proton.com", Gender = "Female" },
+            new() { Id = 6, NIN = "000000006", FirstName = "Sophia", LastName = "Rizou", DateOfBirth = new DateTime(2010, 6, 6), ContactInfo = "s.rizou@gmail.com", Gender = "Female" }
         ];
 
         protected static List<Location> SeededLocations =>
         [
-            new() { Id = 1, City = "New York", Country = "USA" },
-            new() { Id = 2, City = "Toronto", Country = "Canada" },
-            new() { Id = 3, City = "Madrid", Country = "Spain" },
-            new() { Id = 4, City = "London", Country = "UK" },
-            new() { Id = 5, City = "Sydney", Country = "Australia" },
-            new() { Id = 6, City = "Dublin", Country = "Ireland" }
+            new() { Id = 1, City = "Athens", Country = "Greece" },
+            new() { Id = 2, City = "Thessaloniki", Country = "Greece" },
+            new() { Id = 3, City = "Rome", Country = "Italy" },
+            new() { Id = 4, City = "Berlin", Country = "Germany" },
+            new() { Id = 5, City = "Paphos", Country = "Cyprus" },
+            new() { Id = 6, City = "Patra", Country = "Greece" }
         ];
 
         protected static List<Symptom> SeededSymptoms =>

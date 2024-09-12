@@ -17,8 +17,9 @@ namespace IncidentRecorder.Tests.Unit
 
             var actionResult = Assert.IsType<OkObjectResult>(result.Result);
             var diseases = Assert.IsType<List<DiseaseDTO>>(actionResult.Value);
-            Assert.Single(diseases);
+            Assert.Equal(2, diseases.Count);
             Assert.Equal("COVID-19", diseases[0].Name);
+            Assert.Equal("Gastroenteritis", diseases[1].Name);
         }
 
         // Test: Get a single disease by ID

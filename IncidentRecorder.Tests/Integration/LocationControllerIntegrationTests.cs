@@ -123,7 +123,7 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PostLocation_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
         {
             // Arrange: Create new locations with missing fields
-            var invalidLocation1 = "{\"city\":\"Athens\"}";
+            var invalidLocation1 = "{\"city\":\"Larisa\"}";
             var invalidLocation2 = "{\"country\":\"Greece\"}";
 
             var content1 = new StringContent(invalidLocation1, System.Text.Encoding.UTF8, "application/json");
@@ -285,7 +285,7 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PostLocation_ReturnsConflict_WhenLocationCityIsNotUnique()
         {
             // Arrange: Create an existing location
-            var duplicateLocation = new LocationCreateDTO { City = "New York",  Country = "USA" };
+            var duplicateLocation = new LocationCreateDTO { City = SeededLocations[0].City,  Country = SeededLocations[0].Country };
 
             // Act: Try to create a duplicate location
             var response = await _client.PostAsync(LocationApiUrl, CreateContent(duplicateLocation));
@@ -298,7 +298,7 @@ namespace IncidentRecorder.Tests.Integration
         public async Task PutLocation_ReturnsConflict_WhenLocationCityIsNotUnique()
         {
             // Arrange: Prepare an existing location
-            var duplicateLocation = new LocationUpdateDTO { City = "New York", Country = "USA" };
+            var duplicateLocation = new LocationUpdateDTO { City = SeededLocations[0].City, Country = SeededLocations[0].Country };
 
             // Act: Try to update a location with the duplicate data
             var response = await _client.PutAsync($"{LocationApiUrl}/2", CreateContent(duplicateLocation));

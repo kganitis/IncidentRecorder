@@ -18,8 +18,16 @@ namespace IncidentRecorder.Tests.Unit
 
             var actionResult = Assert.IsType<OkObjectResult>(result.Result);
             var incidents = Assert.IsType<List<IncidentReadDTO>>(actionResult.Value);
-            Assert.Single(incidents);
+            Assert.Equal(2, incidents.Count);
             Assert.Equal("COVID-19", incidents[0].DiseaseName);
+            Assert.Equal("Kostas Ganitis", incidents[0].PatientName);
+            Assert.Equal("Athens, Greece", incidents[0].Location);
+            Assert.Equal("Cough", incidents[0].Symptoms?[0]);
+            Assert.Equal("Fever", incidents[0].Symptoms?[1]);
+            Assert.Equal("Gastroenteritis", incidents[1].DiseaseName);
+            Assert.Equal("Efthymios Alepis", incidents[1].PatientName);
+            Assert.Equal("Piraeus, Greece", incidents[1].Location);
+            Assert.Equal("Nausea", incidents[1].Symptoms?[0]);
         }
 
         // Test: Get a single incident by ID
@@ -60,8 +68,8 @@ namespace IncidentRecorder.Tests.Unit
                 DiseaseId = 1,
                 PatientId = 1,
                 LocationId = 1,
-                DateReported = System.DateTime.Now,
-                SymptomIds = new List<int> { 1 }
+                DateReported = DateTime.Now,
+                SymptomIds = [1]
             };
 
             var result = await controller.PostIncident(newIncident);
@@ -83,7 +91,7 @@ namespace IncidentRecorder.Tests.Unit
                 DiseaseId = 1,
                 PatientId = 1,
                 LocationId = 1,
-                DateReported = System.DateTime.Now.AddDays(-1)
+                DateReported = DateTime.Now.AddDays(-1)
             };
 
             var result = await controller.PutIncident(1, updateIncident);
@@ -143,7 +151,7 @@ namespace IncidentRecorder.Tests.Unit
 
             var actionResult = Assert.IsType<OkObjectResult>(result.Result);
             var incidents = Assert.IsType<List<IncidentListDTO>>(actionResult.Value);
-            Assert.Single(incidents);
+            Assert.Equal(2, incidents.Count);
         }
 
         // Test: Get incident details (full version)
