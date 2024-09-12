@@ -8,6 +8,18 @@ namespace IncidentRecorder.Tests.Integration
     {
         private const string PatientApiUrl = "/api/patient";
 
+        private static void AssertPatient(PatientDTO patient, int id, string nin, string firstName, string lastName, DateTime? dateOfBirth, string gender, string contactInfo)
+        {
+            Assert.NotNull(patient);
+            Assert.Equal(id, patient.Id);
+            Assert.Equal(nin, patient.NIN);
+            Assert.Equal(firstName, patient.FirstName);
+            Assert.Equal(lastName, patient.LastName);
+            Assert.Equal(dateOfBirth, patient.DateOfBirth);
+            Assert.Equal(gender, patient.Gender);
+            Assert.Equal(contactInfo, patient.ContactInfo);
+        }
+
         [Fact]
         public async Task GetPatients_ReturnsOkResult_WithSeededData()
         {
@@ -19,38 +31,24 @@ namespace IncidentRecorder.Tests.Integration
             var patients = await DeserializeResponse<List<PatientDTO>>(response);
             Assert.NotNull(patients);
 
-            var expectedPatients = new[]
+            for (int i = 0; i < SeededPatients.Count; i++)
             {
-                new { Id = 1, NIN = "000000001", Name = "John Doe", ContactInfo = "john.doe@example.com" },
-                // TODO check for all the patients
-                new { Id = 6, NIN = "000000006", Name = "Liam O'Reilly", ContactInfo = "liam.oreilly@medservice.com" }
-            };
-
-            foreach (var expected in expectedPatients)
-            {
-                Assert.Contains(patients, i => i.Id == expected.Id && $"{i.FirstName} {i.LastName}" == expected.Name && i.ContactInfo == expected.ContactInfo);
+                var actual = patients[i];
+                var expected = SeededPatients[i];
+                AssertPatient(actual, expected.Id, expected.NIN, expected.FirstName, expected.LastName, expected.DateOfBirth, expected.Gender, expected.ContactInfo);
             }
         }
 
-        [Theory]
-        [InlineData(1, "000000001", "John Doe", "john.doe@example.com")]
-        [InlineData(2, "000000002", "Alex Smith", "alex.smith@healthmail.com")]
-        [InlineData(3, "000000003", "Maria Gonzalez", "maria.gonzalez@medmail.com")]
-        [InlineData(4, "000000004", "John Doe", "john.doe@medemail.com")]
-        [InlineData(5, "000000005", "Emma Brown", "emma.brown@health.com")]
-        [InlineData(6, "000000006", "Liam O'Reilly", "liam.oreilly@medservice.com")]
-        public async Task GetPatientById_ReturnsOkResult_WhenPatientExists(int id, string nin, string name, string contactInfo)
+        [Fact]
+        public async Task GetPatientById_ReturnsOkResult_WhenPatientExists()
         {
             // Act
-            var response = await _client.GetAsync($"{PatientApiUrl}/{id}");
+            var response = await _client.GetAsync($"{PatientApiUrl}/{SeededPatients[0].Id}");
 
             // Assert
-            var patient = await DeserializeResponse<PatientDTO>(response);
-            Assert.NotNull(patient);
-            Assert.Equal(id, patient.Id);
-            Assert.Equal(nin, patient.NIN);
-            Assert.Equal(name, $"{patient.FirstName} {patient.LastName}");
-            Assert.Equal(contactInfo, patient.ContactInfo);
+            var actual = await DeserializeResponse<PatientDTO>(response);
+            var expected = SeededPatients[0];
+            AssertPatient(actual, expected.Id, expected.NIN, expected.FirstName, expected.LastName, expected.DateOfBirth, expected.Gender, expected.ContactInfo);
         }
 
         [Fact]
@@ -74,13 +72,7 @@ namespace IncidentRecorder.Tests.Integration
             response.EnsureSuccessStatusCode();
             var createdPatient = await DeserializeResponse<PatientDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            Assert.NotNull(createdPatient);
-            Assert.Equal("000000007", createdPatient.NIN);
-            Assert.Equal("George", createdPatient.FirstName);
-            Assert.Equal("Washington", createdPatient.LastName);
-            Assert.Equal(new DateTime(1732, 2, 22), createdPatient.DateOfBirth);
-            Assert.Equal("Male", createdPatient.Gender);
-            Assert.Equal("potus@usa.gov", createdPatient.ContactInfo);
+            AssertPatient(createdPatient, createdPatient.Id, newPatient.NIN, newPatient.FirstName, newPatient.LastName, newPatient.DateOfBirth, newPatient.Gender, newPatient.ContactInfo);
         }
 
         [Fact]
@@ -123,12 +115,7 @@ namespace IncidentRecorder.Tests.Integration
             var getResponse = await _client.GetAsync($"{PatientApiUrl}/{createdId}");
             var updatedPatientResult = await DeserializeResponse<PatientDTO>(getResponse);
 
-            Assert.NotNull(updatedPatientResult);
-            Assert.Equal("Updated FirstName", updatedPatientResult.FirstName);
-            Assert.Equal("Updated LastName", updatedPatientResult.LastName);
-            Assert.Equal(new DateTime(1992, 1, 1), updatedPatientResult.DateOfBirth);
-            Assert.Equal("Female", updatedPatientResult.Gender);
-            Assert.Equal("updated@mail.com", updatedPatientResult.ContactInfo);
+            AssertPatient(updatedPatientResult, createdId, newPatient.NIN, updatedPatient.FirstName, updatedPatient.LastName, updatedPatient.DateOfBirth, updatedPatient.Gender, updatedPatient.ContactInfo);
 
             // Delete the updated patient to clean up
             var deleteResponse = await _client.DeleteAsync($"{PatientApiUrl}/{createdId}");

@@ -8,7 +8,7 @@ namespace IncidentRecorder.Tests.Integration
     {
         private const string DiseaseApiUrl = "/api/disease";
 
-        private void AssertDisease(DiseaseDTO disease, int id, string name, string description)
+        private static void AssertDisease(DiseaseDTO disease, int id, string name, string description)
         {
             Assert.NotNull(disease);
             Assert.Equal(id, disease.Id);
@@ -60,8 +60,7 @@ namespace IncidentRecorder.Tests.Integration
             response.EnsureSuccessStatusCode();
             var createdDisease = await DeserializeResponse<DiseaseDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            var expectedId = createdDisease.Id;
-            AssertDisease(createdDisease, expectedId, newDisease.Name, newDisease.Description);
+            AssertDisease(createdDisease, createdDisease.Id, newDisease.Name, newDisease.Description);
         }
 
         [Fact]

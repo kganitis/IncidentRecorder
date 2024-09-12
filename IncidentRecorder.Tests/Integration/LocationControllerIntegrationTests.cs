@@ -8,6 +8,14 @@ namespace IncidentRecorder.Tests.Integration
     {
         private const string LocationApiUrl = "/api/location";
 
+        private void AssertLocation(LocationDTO location, int id, string city, string country)
+        {
+            Assert.NotNull(location);
+            Assert.Equal(id, location.Id);
+            Assert.Equal(city, location.City);
+            Assert.Equal(country, location.Country);
+        }
+
         [Fact]
         public async Task GetLocations_ReturnsOkResult_WithSeededData()
         {
@@ -19,36 +27,24 @@ namespace IncidentRecorder.Tests.Integration
             var locations = await DeserializeResponse<List<LocationDTO>>(response);
             Assert.NotNull(locations);
 
-            var expectedLocations = new[]
+            for (int i = 0; i < SeededLocations.Count; i++)
             {
-                new { Id = 1, City = "New York", Country = "USA" },
-                // TODO check for all the locations
-                new { Id = 6, City = "Dublin", Country = "Ireland" }
-            };
-
-            foreach (var expected in expectedLocations)
-            {
-                Assert.Contains(locations, i => i.Id == expected.Id && i.City == expected.City && i.Country == expected.Country);
+                var actual = locations[i];
+                var expected = SeededLocations[i];
+                AssertLocation(actual, expected.Id, expected.City, expected.Country);
             }
         }
 
-        [Theory]
-        [InlineData(1, "New York, USA")]
-        [InlineData(2, "Toronto, Canada")]
-        [InlineData(3, "Madrid, Spain")]
-        [InlineData(4, "London, UK")]
-        [InlineData(5, "Sydney, Australia")]
-        [InlineData(6, "Dublin, Ireland")]
-        public async Task GetLocationById_ReturnsOkResult_WhenLocationExists(int id, string cityCountry)
+        [Fact]
+        public async Task GetLocationById_ReturnsOkResult_WhenLocationExists()
         {
             // Act
-            var response = await _client.GetAsync($"{LocationApiUrl}/{id}");
+            var response = await _client.GetAsync($"{LocationApiUrl}/{SeededLocations[0].Id}");
 
             // Assert
-            var location = await DeserializeResponse<LocationDTO>(response);
-            Assert.NotNull(location);
-            Assert.Equal(id, location.Id);
-            Assert.Equal(cityCountry, $"{location.City}, {location.Country}");
+            var actual = await DeserializeResponse<LocationDTO>(response);
+            var expected = SeededLocations[0];
+            AssertLocation(actual, expected.Id, expected.City, expected.Country);
         }
 
         [Fact]
@@ -64,9 +60,8 @@ namespace IncidentRecorder.Tests.Integration
             response.EnsureSuccessStatusCode();
             var createdLocation = await DeserializeResponse<LocationDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            Assert.NotNull(createdLocation);
-            Assert.Equal("Tokyo", createdLocation.City);
-            Assert.Equal("Japan", createdLocation.Country);
+            var expectedId = createdLocation.Id;
+            AssertLocation(createdLocation, expectedId, newLocation.City, newLocation.Country);
         }
 
         [Fact]
@@ -94,9 +89,7 @@ namespace IncidentRecorder.Tests.Integration
             var getResponse = await _client.GetAsync($"{LocationApiUrl}/{createdId}");
             var updatedLocationResult = await DeserializeResponse<LocationDTO>(getResponse);
 
-            Assert.NotNull(updatedLocationResult);
-            Assert.Equal("Updated City", updatedLocationResult.City);
-            Assert.Equal("Updated Country", updatedLocationResult.Country);
+            AssertLocation(updatedLocationResult, createdId, updatedLocation.City, updatedLocation.Country);
 
             // Delete the updated location to clean up
             var deleteResponse = await _client.DeleteAsync($"{LocationApiUrl}/{createdId}");

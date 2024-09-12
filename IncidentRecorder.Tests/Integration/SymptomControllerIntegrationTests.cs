@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using IncidentRecorder.DTOs.Disease;
 using IncidentRecorder.DTOs.Symptom;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -7,6 +8,14 @@ namespace IncidentRecorder.Tests.Integration
     public class SymptomControllerIntegrationTests(WebApplicationFactory<Program> factory) : BaseIntegrationTest(factory)
     {
         private const string SymptomApiUrl = "/api/symptom";
+
+        private static void AssertSymptom(SymptomDTO symptom, int id, string name, string description)
+        {
+            Assert.NotNull(symptom);
+            Assert.Equal(id, symptom.Id);
+            Assert.Equal(name, symptom.Name);
+            Assert.Equal(description, symptom.Description);
+        }
 
         [Fact]
         public async Task GetSymptoms_ReturnsOkResult_WithSeededData()
@@ -19,36 +28,24 @@ namespace IncidentRecorder.Tests.Integration
             var symptoms = await DeserializeResponse<List<SymptomDTO>>(response);
             Assert.NotNull(symptoms);
 
-            var expectedSymptoms = new[]
+            for (int i = 0; i < SeededSymptoms.Count; i++)
             {
-                new { Id = 1, Name = "Cough", Description = "Persistent cough" },
-                // TODO check for all the symptoms
-                new { Id = 6, Name = "Rash", Description = "Red, itchy skin rash with blisters" }
-            };
-
-            foreach (var expected in expectedSymptoms)
-            {
-                Assert.Contains(symptoms, i => i.Id == expected.Id && i.Name == expected.Name && i.Description == expected.Description);
+                var actual = symptoms[i];
+                var expected = SeededSymptoms[i];
+                AssertSymptom(actual, expected.Id, expected.Name, expected.Description);
             }
         }
 
-        [Theory]
-        [InlineData(1, "Cough")]
-        [InlineData(2, "Nausea")]
-        [InlineData(3, "Chills")]
-        [InlineData(4, "Coughing up blood")]
-        [InlineData(5, "Joint Pain")]
-        [InlineData(6, "Rash")]
-        public async Task GetSymptomById_ReturnsOkResult_WhenSymptomExists(int id, string name)
+        [Fact]
+        public async Task GetSymptomById_ReturnsOkResult_WhenSymptomExists()
         {
             // Act
-            var response = await _client.GetAsync($"{SymptomApiUrl}/{id}");
+            var response = await _client.GetAsync($"{SymptomApiUrl}/{SeededSymptoms[0].Id}");
 
             // Assert
-            var symptom = await DeserializeResponse<SymptomDTO>(response);
-            Assert.NotNull(symptom);
-            Assert.Equal(id, symptom.Id);
-            Assert.Equal(name, symptom.Name);
+            var actual = await DeserializeResponse<SymptomDTO>(response);
+            var expected = SeededSymptoms[0];
+            AssertSymptom(actual, expected.Id, expected.Name, expected.Description);
         }
 
         [Fact]
@@ -64,9 +61,7 @@ namespace IncidentRecorder.Tests.Integration
             response.EnsureSuccessStatusCode();
             var createdSymptom = await DeserializeResponse<SymptomDTO>(response);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            Assert.NotNull(createdSymptom);
-            Assert.Equal("Taste Loss", createdSymptom.Name);
-            Assert.Equal("Loss of taste sensation", createdSymptom.Description);
+            AssertSymptom(createdSymptom, createdSymptom.Id, newSymptom.Name, newSymptom.Description);
         }
 
         [Fact]
@@ -94,9 +89,7 @@ namespace IncidentRecorder.Tests.Integration
             var getResponse = await _client.GetAsync($"{SymptomApiUrl}/{createdId}");
             var updatedSymptomResult = await DeserializeResponse<SymptomDTO>(getResponse);
 
-            Assert.NotNull(updatedSymptomResult);
-            Assert.Equal("Updated Symptom", updatedSymptomResult.Name);
-            Assert.Equal("Updated Description", updatedSymptomResult.Description);
+            AssertSymptom(updatedSymptomResult, createdId, updatedSymptom.Name, updatedSymptom.Description);
 
             // Delete the updated symptom to clean up
             await _client.DeleteAsync($"{SymptomApiUrl}/{createdId}");

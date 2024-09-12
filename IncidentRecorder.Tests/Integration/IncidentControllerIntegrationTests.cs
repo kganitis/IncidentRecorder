@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using IncidentRecorder.DTOs.Incident;
-using IncidentRecorder.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace IncidentRecorder.Tests.Integration
@@ -9,7 +8,7 @@ namespace IncidentRecorder.Tests.Integration
     {
         private const string IncidentApiUrl = "/api/incident";
 
-        private void AssertIncident(IncidentReadDTO actual, int id, string diseaseName, string patientName, string location, List<string> symptoms)
+        private static void AssertIncident(IncidentReadDTO actual, int id, string diseaseName, string patientName, string location, List<string> symptoms)
         {
             Assert.NotNull(actual);
             Assert.Equal(id, actual.Id);
