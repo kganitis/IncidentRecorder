@@ -6,13 +6,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IncidentRecorder.Controllers
 {
+    /// <summary>
+    /// API controller for managing diseases.
+    /// </summary>
+    /// <param name="context"></param>
     [Route("api/[controller]")]
     [ApiController]
     public class DiseaseController(IncidentContext context) : ControllerBase
     {
         private readonly IncidentContext _context = context;
 
-        // Get all diseases
+        /// <summary>
+        /// Gets all diseases.
+        /// </summary>
+        /// <returns>A list of all diseases.</returns>
+        /// <response code="200">Returns the list of diseases.</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<DiseaseDTO>>> GetDiseases()
@@ -22,7 +30,13 @@ namespace IncidentRecorder.Controllers
             return Ok(diseaseDtos);
         }
 
-        // Get a single disease by id
+        /// <summary>
+        /// Gets a specific disease by ID.
+        /// </summary>
+        /// <param name="id">The ID of the disease to retrieve.</param>
+        /// <returns>The disease entity.</returns>
+        /// <response code="200">Returns the disease.</response>
+        /// <response code="404">If the disease is not found.</response>
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -36,7 +50,13 @@ namespace IncidentRecorder.Controllers
             return Ok(MapToDto(disease));
         }
 
-        // Create a new disease
+        /// <summary>
+        /// Creates a new disease.
+        /// </summary>
+        /// <param name="diseaseDto">The disease entity to create.</param>
+        /// <returns>The newly created disease.</returns>
+        /// <response code="201">Returns the newly created disease.</response>
+        /// <response code="409">If a disease with the same name already exists.</response>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -59,7 +79,14 @@ namespace IncidentRecorder.Controllers
             return CreatedAtAction(nameof(GetDisease), new { id = disease.Id }, MapToDto(disease));
         }
 
-        // Update an existing disease
+        /// <summary>
+        /// Updates an existing disease.
+        /// </summary>
+        /// <param name="id">The ID of the disease to update.</param>
+        /// <param name="diseaseDto">The updated disease data.</param>
+        /// <response code="204">If the update is successful.</response>
+        /// <response code="404">If the disease is not found.</response>
+        /// <response code="409">If a disease with the same name already exists.</response>
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -98,7 +125,12 @@ namespace IncidentRecorder.Controllers
             return NoContent();
         }
 
-        // Delete a disease
+        /// <summary>
+        /// Deletes a disease by ID.
+        /// </summary>
+        /// <param name="id">The ID of the disease to delete.</param>
+        /// <response code="204">If the deletion is successful.</response>
+        /// <response code="404">If the disease is not found.</response>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -3,9 +3,9 @@ using System.Text.RegularExpressions;
 
 namespace IncidentRecorder
 {
-    public partial class CustomValidationProblemDetailsFactory
+    internal partial class CustomValidationProblemDetailsFactory
     {
-        public static ValidationProblemDetails CreateProblemDetails(ActionContext context)
+        internal static ValidationProblemDetails CreateProblemDetails(ActionContext context)
         {
             var problemDetails = new ValidationProblemDetails(context.ModelState)
             {

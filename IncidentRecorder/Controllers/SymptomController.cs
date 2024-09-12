@@ -6,13 +6,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IncidentRecorder.Controllers
 {
+    /// <summary>
+    /// API controller for managing symptoms.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class SymptomController(IncidentContext context) : ControllerBase
     {
         private readonly IncidentContext _context = context;
 
-        // Get all symptoms
+        /// <summary>
+        /// Retrieves all symptoms.
+        /// </summary>
+        /// <returns>A list of symptom DTOs.</returns>
+        /// <response code="200">Returns the list of symptoms.</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<SymptomDTO>>> GetSymptoms()
@@ -22,7 +29,13 @@ namespace IncidentRecorder.Controllers
             return Ok(symptomDtos);
         }
 
-        // Get a single symptom by id
+        /// <summary>
+        /// Retrieves a symptom by its ID.
+        /// </summary>
+        /// <param name="id">The ID of the symptom to retrieve.</param>
+        /// <returns>A symptom DTO.</returns>
+        /// <response code="200">Returns the requested symptom.</response>
+        /// <response code="404">If the symptom is not found.</response>
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -37,7 +50,13 @@ namespace IncidentRecorder.Controllers
             return Ok(MapToDto(symptom));
         }
 
-        // Create a new symptom
+        /// <summary>
+        /// Creates a new symptom.
+        /// </summary>
+        /// <param name="symptomDto">The symptom details to create.</param>
+        /// <returns>The created symptom DTO.</returns>
+        /// <response code="201">Returns the newly created symptom.</response>
+        /// <response code="409">If a symptom with the same name already exists.</response>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -61,7 +80,14 @@ namespace IncidentRecorder.Controllers
             return CreatedAtAction(nameof(GetSymptom), new { id = symptom.Id }, MapToDto(symptom));
         }
 
-        // Update an existing symptom
+        /// <summary>
+        /// Updates an existing symptom.
+        /// </summary>
+        /// <param name="id">The ID of the symptom to update.</param>
+        /// <param name="symptomDto">The updated symptom details.</param>
+        /// <response code="204">No content, the symptom was successfully updated.</response>
+        /// <response code="404">If the symptom is not found.</response>
+        /// <response code="409">If a symptom with the same name already exists, excluding the current symptom.</response>
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -102,7 +128,12 @@ namespace IncidentRecorder.Controllers
             return NoContent();
         }
 
-        // Delete a symptom
+        /// <summary>
+        /// Deletes a symptom by its ID.
+        /// </summary>
+        /// <param name="id">The ID of the symptom to delete.</param>
+        /// <response code="204">The symptom was successfully deleted.</response>
+        /// <response code="404">If the symptom is not found.</response>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

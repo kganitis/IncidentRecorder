@@ -2,7 +2,7 @@
 
 namespace IncidentRecorder
 {
-    public class GlobalExceptionHandlerMiddleware(RequestDelegate next)
+    internal class GlobalExceptionHandlerMiddleware(RequestDelegate next)
     {
         private readonly RequestDelegate _next = next;
 

@@ -6,13 +6,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IncidentRecorder.Controllers
 {
+    /// <summary>
+    /// API dontroller for managing patients.
+    /// </summary>
+    /// <param name="context"></param>
     [Route("api/[controller]")]
     [ApiController]
     public class PatientController(IncidentContext context) : ControllerBase
     {
         private readonly IncidentContext _context = context;
 
-        // Get all patients
+        /// <summary>
+        /// Retrieves all patients from the system.
+        /// </summary>
+        /// <returns>A list of patient DTOs.</returns>
+        /// <response code="200">Returns the list of patients.</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PatientDTO>>> GetPatients()
@@ -22,7 +30,13 @@ namespace IncidentRecorder.Controllers
             return Ok(patientDtos);
         }
 
-        // Get a single patient by id
+        /// <summary>
+        /// Retrieves a specific patient by their ID.
+        /// </summary>
+        /// <param name="id">The ID of the patient to retrieve.</param>
+        /// <returns>A patient DTO.</returns>
+        /// <response code="200">Returns the requested patient.</response>
+        /// <response code="404">If the patient is not found.</response>
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -38,7 +52,13 @@ namespace IncidentRecorder.Controllers
             return Ok(MapToDto(patient));
         }
 
-        // Create a new patient
+        /// <summary>
+        /// Creates a new patient.
+        /// </summary>
+        /// <param name="patientDto">The patient details to create.</param>
+        /// <returns>The created patient DTO.</returns>
+        /// <response code="201">Returns the newly created patient.</response>
+        /// <response code="409">If a patient with the same NIN already exists.</response>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -66,7 +86,14 @@ namespace IncidentRecorder.Controllers
             return CreatedAtAction(nameof(GetPatient), new { id = patient.Id }, MapToDto(patient));
         }
 
-        // Update an existing patient
+        /// <summary>
+        /// Updates an existing patient by ID.
+        /// </summary>
+        /// <param name="id">The ID of the patient to update.</param>
+        /// <param name="patientDto">The updated patient details.</param>
+        /// <response code="204">No content, the patient was successfully updated.</response>
+        /// <response code="404">If the patient is not found.</response>
+        /// <response code="409">If a patient with the same NIN already exists, excluding the current patient.</response>
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -111,7 +138,12 @@ namespace IncidentRecorder.Controllers
             return NoContent();
         }
 
-        // Delete a patient
+        /// <summary>
+        /// Deletes a patient by ID.
+        /// </summary>
+        /// <param name="id">The ID of the patient to delete.</param>
+        /// <response code="204">The patient was successfully deleted.</response>
+        /// <response code="404">If the patient is not found.</response>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
