@@ -165,17 +165,17 @@ dotnet run
 
 `GET /api/incident/details/{id}`: Ανάκτηση λεπτομερών πληροφοριών για ένα κρούσμα.
 
-### Παραδείγματα χρήσης
+## Παραδείγματα χρήσης
   
-#### Ανάκτηση κρούσματος με βάση το ID
+### Ανάκτηση κρούσματος με βάση το ID
   
-##### `Request`
+#### `Request`
 
 ``` bash
 GET /api/incident/3
 ```
 
-##### `Response`
+#### `Response`
 
 ``` json
 {
@@ -188,9 +188,9 @@ GET /api/incident/3
 }
 ```
 
-#### Ενημέρωση υπάρχοντος ασθενή με βάση το ID
+### Ενημέρωση υπάρχοντος ασθενή με βάση το ID
 
-##### `Request`
+#### `Request`
 
 ``` bash
 PUT /api/patient/2
@@ -200,7 +200,7 @@ Content-Type: application/json
 }
 ```
 
-##### `Response`
+#### `Response`
 
 ``` bash
 204 No Content
