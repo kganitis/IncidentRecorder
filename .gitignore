@@ -396,9 +396,5 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
-*.db-shm
-*.db-wal
-/IncidentRecorder/._incidentrecorder.db
-/IncidentRecorder/._incidentrecorder.db-wal
 /Plan.txt
 /IncidentRecorder.Tests/Plan.txt
