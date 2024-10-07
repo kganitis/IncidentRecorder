@@ -179,7 +179,7 @@ GET /api/incident/3
 
 ``` json
 {
-  "id": 12,
+  "id": 3,
   "diseaseName": "Malaria",
   "patientName": "Maria Konstantinou",
   "location": "Rome, Italy",
